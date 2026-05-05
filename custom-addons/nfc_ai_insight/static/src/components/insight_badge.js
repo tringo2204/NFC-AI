@@ -10,7 +10,8 @@
  *
  * Widget tự đọc: model, record_id, field name, value → gọi AI API.
  */
-import { Component, useState, onWillUpdateProps, useService, useRef, onMounted } from "@odoo/owl";
+import { Component, useState, onWillUpdateProps, onMounted } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { MonetaryField } from "@web/views/fields/monetary/monetary_field";
