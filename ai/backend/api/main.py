@@ -1,4 +1,5 @@
 """NFC AI — FastAPI entry point (Sprint 1: agent wired)"""
+import asyncio
 import os
 from contextlib import asynccontextmanager
 
@@ -23,6 +24,10 @@ class Settings(BaseSettings):
 
 settings = Settings()
 agent: DecisionAgent | None = None
+
+INSIGHT_HTTP_TIMEOUT_SEC = float(os.getenv("INSIGHT_HTTP_TIMEOUT_SEC", "90"))
+INSIGHT_MAX_CONCURRENT = max(1, int(os.getenv("INSIGHT_MAX_CONCURRENT", "2")))
+_insight_sem = asyncio.Semaphore(INSIGHT_MAX_CONCURRENT)
 
 
 @asynccontextmanager
@@ -75,11 +80,23 @@ async def get_insight(event: ERPEvent) -> InsightResponse:
     """
     if not agent:
         raise HTTPException(status_code=503, detail="Agent not initialized")
-    try:
-        decision, log_id = agent.run(event)
-        return InsightResponse(decision=decision, log_id=log_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    async with _insight_sem:
+        try:
+            decision, log_id = await asyncio.wait_for(
+                asyncio.to_thread(agent.run, event),
+                timeout=INSIGHT_HTTP_TIMEOUT_SEC,
+            )
+        except asyncio.TimeoutError:
+            decision = DecisionOutput(
+                level="no_data",
+                message="Hết thời gian chờ phân tích AI. Giảm số dòng cùng lúc hoặc thử lại.",
+                confidence="low",
+                data_points=0,
+            )
+            log_id = None
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    return InsightResponse(decision=decision, log_id=log_id)
 
 
 @app.post("/api/feedback")

@@ -40,6 +40,7 @@ Quy tắc bắt buộc:
 2. Nếu data_points < 3 → trả level = "no_data", không đưa ra nhận xét.
 3. message tối đa 150 ký tự, tiếng Việt, có số cụ thể.
 4. Luôn trả về JSON hợp lệ theo schema sau — BẮT BUỘC có trường price_context:
+5. Hiệu năng: tối đa 2 vòng gọi tool (mỗi vòng có thể gọi song song nhiều tool); khi đã có get_price_history và get_supplier_comparison thì trả JSON ngay, không gọi thêm tool.
 {{
   "level": "good|normal|high|critical|no_data",
   "deviation_pct": số (% so với giá TB),
@@ -84,10 +85,22 @@ Thang đánh giá deviation_pct:
 def _get_llm(tools: list):
     provider = os.getenv("LLM_PROVIDER", "openai")
     model = os.getenv("LLM_MODEL", "gpt-4o")
+    timeout = float(os.getenv("LLM_REQUEST_TIMEOUT_SEC", "70"))
+    max_retries = int(os.getenv("LLM_MAX_RETRIES", "1"))
     if provider == "anthropic":
-        llm = ChatAnthropic(model=model, temperature=0)
+        llm = ChatAnthropic(
+            model=model,
+            temperature=0,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
     else:
-        llm = ChatOpenAI(model=model, temperature=0)
+        llm = ChatOpenAI(
+            model=model,
+            temperature=0,
+            timeout=timeout,
+            max_retries=max_retries,
+        )
     return llm.bind_tools(tools)
 
 
@@ -246,12 +259,15 @@ class DecisionAgent:
                 "instruction": "Phân tích dữ liệu và trả về JSON theo schema đã yêu cầu.",
             }, ensure_ascii=False))
 
-            result = app.invoke({
-                "messages": [user_msg],
-                "event": event,
-                "tool_names": tool_names,
-                "domain_hint": domain_hint,
-            })
+            result = app.invoke(
+                {
+                    "messages": [user_msg],
+                    "event": event,
+                    "tool_names": tool_names,
+                    "domain_hint": domain_hint,
+                },
+                {"recursion_limit": int(os.getenv("LANGGRAPH_RECURSION_LIMIT", "10"))},
+            )
 
             # 6. Parse output
             last_msg = result["messages"][-1]
