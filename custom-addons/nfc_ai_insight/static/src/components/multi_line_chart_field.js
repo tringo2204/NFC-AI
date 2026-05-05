@@ -77,18 +77,11 @@ export class NfcMultilineChartField extends Component {
                         t-on-mousemove="onSvgMouseMove"
                         t-on-mouseleave="onSvgMouseLeave"
                     >
-                        <defs>
-                            <linearGradient t-att-id="chart.gradientId" x1="0" x2="0" y1="0" y2="1">
-                                <stop offset="0%" stop-color="var(--nfc-mlc-grid-a, currentColor)" stop-opacity="0.12"/>
-                                <stop offset="100%" stop-color="var(--nfc-mlc-grid-a, currentColor)" stop-opacity="0.02"/>
-                            </linearGradient>
-                        </defs>
                         <rect
                             t-att-x="chart.plot.x0"
                             t-att-y="chart.plot.y0"
                             t-att-width="chart.plot.w"
                             t-att-height="chart.plot.h"
-                            t-att-fill="'url(#' + chart.gradientId + ')'"
                             class="nfc-mlc-plot-bg"
                         />
                         <t t-foreach="chart.gridLines" t-as="g" t-key="g_index">
@@ -263,10 +256,6 @@ export class NfcMultilineChartField extends Component {
             color: COLORS[i % COLORS.length],
         }));
 
-        const rid = this.props.record?.resId ?? "0";
-        const fname = this.props.name ?? "f";
-        const gradientId = `nfc-mlc-g-${rid}-${fname}`.replace(/[^a-zA-Z0-9_-]/g, "");
-
         return {
             title: data.title || "Giá TB theo tháng (đơn vị: đ)",
             subtitle: data.subtitle || "",
@@ -277,7 +266,6 @@ export class NfcMultilineChartField extends Component {
             paths,
             xlabels,
             legendItems,
-            gradientId,
             cats,
             series,
             innerW,
@@ -379,14 +367,15 @@ registry.category("fields").add("nfc_multiline_chart", {
 
 const style = document.createElement("style");
 style.textContent = `
+/* Panel sáng cố định (không theo nền form tối) — chart + bảng BGĐ */
 .nfc-multiline-chart-field { width: 100%; max-width: 100%; }
 .nfc-mlc-card {
-  border: 1px solid var(--border-color, #e9ecef);
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
-  background: var(--nfc-mlc-card-bg, var(--o-view-background-color, #fff));
+  background: #ffffff;
   box-shadow: none;
   padding: 8px 10px 6px;
-  color: var(--body-color, #495057);
+  color: #334155;
 }
 .nfc-mlc-head { margin-bottom: 4px; }
 .nfc-mlc-title {
@@ -394,7 +383,7 @@ style.textContent = `
   font-weight: 600;
   margin: 0 0 4px 0;
   line-height: 1.3;
-  color: var(--body-color, #495057);
+  color: #1e293b;
 }
 .nfc-mlc-legend {
   display: flex;
@@ -409,7 +398,7 @@ style.textContent = `
   max-width: 100%;
   font-size: 0.6875rem;
   line-height: 1.25;
-  color: var(--text-muted, #6c757d);
+  color: #64748b;
 }
 .nfc-mlc-swatch {
   width: 8px;
@@ -425,6 +414,7 @@ style.textContent = `
   word-break: break-word;
 }
 .nfc-mlc-plot { position: relative; width: 100%; }
+.nfc-mlc-plot-bg { fill: #f1f5f9; }
 .nfc-mlc-svg {
   width: 100%;
   max-width: 100%;
@@ -475,7 +465,7 @@ style.textContent = `
 }
 .nfc-mlc-subtitle {
   font-size: 0.6875rem;
-  color: var(--text-muted, #868e96);
+  color: #64748b;
   margin: 6px 0 0 0;
   line-height: 1.35;
 }
@@ -489,56 +479,31 @@ style.textContent = `
   font-size: 0.6875rem;
   line-height: 1.4;
   pointer-events: none;
-  background: var(--nfc-mlc-tip-bg, #fff);
-  color: var(--nfc-mlc-tip-fg, #495057);
+  background: #ffffff;
+  color: #334155;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.06);
-  border: 1px solid var(--border-color, #e9ecef);
+  border: 1px solid #e2e8f0;
 }
 .nfc-mlc-tip-m {
   font-weight: 600;
   margin-bottom: 4px;
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  color: var(--body-color, #343a40);
+  color: #1e293b;
 }
-.nfc-mlc-tip-row { color: #495057; word-break: break-word; }
+.nfc-mlc-tip-row { color: #475569; word-break: break-word; }
 
-@media (prefers-color-scheme: dark) {
-  html:not([data-color-scheme="light"]) .nfc-mlc-card {
-    --nfc-mlc-card-bg: var(--o-view-background-color, #1e1e1e);
-    --nfc-mlc-tip-bg: #2d3339;
-    --nfc-mlc-tip-fg: #e9ecef;
-    border-color: rgba(255,255,255,.08);
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-svg {
-    color: #64748b;
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-grid {
-    stroke: #4b5563;
-    stroke-opacity: 0.7;
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-axis-x,
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-axis-y {
-    stroke: #4b5563;
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-ytick,
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-xlabel {
-    fill: #9ca3af;
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-tooltip {
-    box-shadow: 0 4px 16px rgba(0,0,0,.35);
-    border-color: rgba(255,255,255,.12);
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-tip-m {
-    color: #f1f3f5;
-    border-bottom-color: rgba(255,255,255,.12);
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-tip-row {
-    color: #dee2e6;
-  }
-  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-dot {
-    stroke: #1e1e1e;
-  }
+.o_form_view .nfc_executive_summary,
+.o_field_widget .nfc_executive_summary {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #334155 !important;
+}
+.o_form_view .nfc_executive_summary .text-muted,
+.o_field_widget .nfc_executive_summary .text-muted {
+  color: #64748b !important;
 }
 `;
 document.head.appendChild(style);

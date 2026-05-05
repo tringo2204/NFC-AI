@@ -37,11 +37,14 @@
     <field name="arch" type="xml">
       <xpath expr="//notebook" position="inside">
         <page string="Tóm tắt BGĐ" name="nfc_executive_summary" sequence="5">
-          <group string="Biểu đồ giá TB theo tháng (so các NCC)" colspan="2">
-            <field name="nfc_price_multiline_json" widget="nfc_multiline_chart" colspan="2" nolabel="1" readonly="1"/>
+          <group colspan="2">
+            <group string="Biểu đồ giá TB theo tháng (so các NCC)">
+              <field name="nfc_price_multiline_json" widget="nfc_multiline_chart" colspan="2" nolabel="1" readonly="1"/>
+            </group>
+            <group string="Bảng chi tiết theo dòng">
+              <field name="nfc_executive_summary_html" colspan="2" nolabel="1" readonly="1"/>
+            </group>
           </group>
-          <separator string="Bảng chi tiết theo dòng"/>
-          <field name="nfc_executive_summary_html" colspan="2" nolabel="1" readonly="1"/>
         </page>
       </xpath>
     </field>
