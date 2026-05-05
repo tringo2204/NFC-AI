@@ -1,4 +1,4 @@
-"""NFC AI — FastAPI entry point (Sprint 1: agent wired)"""
+"""NFC AI — FastAPI entry point"""
 import asyncio
 import os
 from contextlib import asynccontextmanager
@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 
 from ..schemas.decision import ERPEvent, DecisionOutput
-from ..agents.engine import DecisionAgent
+from ..analytics.price_analyzer import PriceAnalyzer
 from ..logger.decision_logger import get_logger, UserActionInput
 
 
@@ -23,19 +23,16 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-agent: DecisionAgent | None = None
+_analyzer = PriceAnalyzer()
 
-INSIGHT_HTTP_TIMEOUT_SEC = float(os.getenv("INSIGHT_HTTP_TIMEOUT_SEC", "90"))
-INSIGHT_MAX_CONCURRENT = max(1, int(os.getenv("INSIGHT_MAX_CONCURRENT", "2")))
+INSIGHT_HTTP_TIMEOUT_SEC = float(os.getenv("INSIGHT_HTTP_TIMEOUT_SEC", "15"))
+INSIGHT_MAX_CONCURRENT = max(1, int(os.getenv("INSIGHT_MAX_CONCURRENT", "10")))
 _insight_sem = asyncio.Semaphore(INSIGHT_MAX_CONCURRENT)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global agent
-    agent = DecisionAgent()
     yield
-    agent = None
 
 
 app = FastAPI(
@@ -60,7 +57,7 @@ async def health():
         "status": "ok",
         "version": "0.2.0",
         "sprint": "S1",
-        "agent": "ready" if agent else "not_initialized",
+        "agent": "pure_sql_analyzer",
     }
 
 
@@ -73,29 +70,53 @@ class InsightResponse(BaseModel):
 async def get_insight(event: ERPEvent) -> InsightResponse:
     """
     Nhận ERPEvent từ OWL widget.
-    Trả về DecisionOutput + log_id (để OWL widget gửi user_action sau).
+    Trả về DecisionOutput + log_id.
 
-    Event flow:
-      ERPEvent → EventAggregator → DomainRouter → LangGraph Agent → DecisionOutput → DecisionLog
+    Flow: ERPEvent → PriceAnalyzer (SQL thuần) → DecisionOutput → DecisionLog
+    Không gọi LLM — latency < 200ms, 0 token cost.
     """
-    if not agent:
-        raise HTTPException(status_code=503, detail="Agent not initialized")
     async with _insight_sem:
         try:
-            decision, log_id = await asyncio.wait_for(
-                asyncio.to_thread(agent.run, event),
+            decision = await asyncio.wait_for(
+                asyncio.to_thread(_analyzer.analyze, event),
                 timeout=INSIGHT_HTTP_TIMEOUT_SEC,
             )
         except asyncio.TimeoutError:
             decision = DecisionOutput(
                 level="no_data",
-                message="Hết thời gian chờ phân tích AI. Giảm số dòng cùng lúc hoặc thử lại.",
+                message="Hết thời gian chờ. Thử lại sau.",
                 confidence="low",
                 data_points=0,
             )
-            log_id = None
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    # Ghi log để dùng cho feedback loop sau này
+    log_id: int | None = None
+    try:
+        from ..logger.decision_logger import DecisionLogInput
+        logger = get_logger()
+        log_input = DecisionLogInput(
+            odoo_model=event.model,
+            record_id=event.record_id or 0,
+            field_name=event.field,
+            field_value=str(event.value or ""),
+            event_type=event.event_type or "price_check",
+            company_id=int(event.context.get("company_id") or 1),
+            user_id=int(event.context.get("user_id") or 0),
+            ai_level=decision.level,
+            ai_deviation=decision.deviation_pct,
+            ai_message=decision.message,
+            ai_suggestion=decision.suggestion,
+            ai_confidence=decision.confidence,
+            ai_data_points=decision.data_points,
+            ai_tools_used=decision.tools_used,
+            ai_cached=decision.cached,
+        )
+        log_id = logger.log(log_input)
+    except Exception:
+        pass
+
     return InsightResponse(decision=decision, log_id=log_id)
 
 
@@ -112,22 +133,5 @@ async def log_user_action(data: UserActionInput):
 
 @app.get("/api/tools")
 async def list_tools():
-    """Debug endpoint: liệt kê các tools đã được đăng ký."""
-    from ..tools.registry import list_tools
-    return {"tools": list_tools()}
-
-
-@app.get("/api/routes")
-async def list_routes():
-    """Debug endpoint: liệt kê domain routing table."""
-    from ..events.router import DOMAIN_ROUTES
-    return {
-        "routes": [
-            {
-                "model": r.model,
-                "event_type": r.event_type,
-                "tools": r.tools,
-            }
-            for r in DOMAIN_ROUTES
-        ]
-    }
+    """Debug: analyzer mode (no LLM)."""
+    return {"mode": "pure_sql_analyzer", "tools": ["price_history_sql", "supplier_comparison_sql"]}
