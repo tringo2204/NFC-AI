@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_nfc_qa_fail_wizard_form" model="ir.ui.view">
+        <field name="name">nfc.qa.fail.wizard.form</field>
+        <field name="model">nfc.qa.fail.wizard</field>
+        <field name="arch" type="xml">
+            <form string="QA Không Đạt — Ghi Nhận">
+                <group>
+                    <field name="picking_id" readonly="1"/>
+                    <field name="fail_reason" placeholder="Mô tả lý do không đạt tiêu chuẩn..."/>
+                    <field name="action" widget="radio"/>
+                    <field name="note" placeholder="Ghi chú thêm (tuỳ chọn)..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm_fail" type="object"
+                            string="Xác Nhận QA Fail" class="btn-danger"/>
+                    <button special="cancel" string="Hủy"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

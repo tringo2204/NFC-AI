@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_purchase_request_user,purchase.request.user,model_purchase_request,group_nfc_pr_user,1,1,1,0
+access_purchase_request_manager,purchase.request.manager,model_purchase_request,group_nfc_pr_manager,1,1,1,1
+access_purchase_request_line_user,purchase.request.line.user,model_purchase_request_line,group_nfc_pr_user,1,1,1,0
+access_purchase_request_line_manager,purchase.request.line.manager,model_purchase_request_line,group_nfc_pr_manager,1,1,1,1
+access_pr_action_wizard_user,pr.action.wizard.user,model_pr_action_wizard,group_nfc_pr_user,1,1,1,1
+access_nfc_qa_fail_wizard_user,nfc.qa.fail.wizard.user,model_nfc_qa_fail_wizard,group_nfc_pr_user,1,1,1,1

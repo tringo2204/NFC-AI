@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Quarantine Location — Biệt trữ chờ QA -->
+        <record id="location_quarantine" model="stock.location">
+            <field name="name">Biệt Trữ (Chờ QA)</field>
+            <field name="location_id" ref="stock.stock_location_locations"/>
+            <field name="usage">internal</field>
+            <field name="active">True</field>
+            <field name="comment">Hàng nhập về chờ QA kiểm định. Chỉ chuyển sang kho chính khi QA Pass.</field>
+        </record>
+
+    </data>
+</odoo>

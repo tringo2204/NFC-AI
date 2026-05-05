@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit Receipt form: thêm QA Gate panel -->
+    <record id="view_stock_picking_nfc_qa" model="ir.ui.view">
+        <field name="name">stock.picking.nfc.qa</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Thêm smart button QA Status -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button type="object" name="action_nfc_qa_pass"
+                        class="oe_stat_button" icon="fa-check-circle"
+                        invisible="not nfc_qa_required or nfc_qa_passed or picking_type_code != 'incoming'">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value text-warning">Chờ QA</span>
+                        <span class="o_stat_text">Bấm để Pass</span>
+                    </div>
+                </button>
+                <button type="object" name="action_nfc_qa_pass"
+                        class="oe_stat_button" icon="fa-check-circle"
+                        invisible="not nfc_qa_required or not nfc_qa_passed or picking_type_code != 'incoming'">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value text-success">QA Pass</span>
+                        <span class="o_stat_text">
+                            <field name="nfc_qa_done_by" readonly="1"/>
+                        </span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!-- QA Gate panel dưới thông tin chung, chỉ hiện với receipt có PR-SKU -->
+            <xpath expr="//page[@name='extra']" position="after">
+                <page string="NFC QA Gate" name="nfc_qa_gate"
+                      invisible="not nfc_qa_required or picking_type_code != 'incoming'">
+                    <group>
+                        <group string="Thông Tin QA">
+                            <field name="purchase_request_id" readonly="1"/>
+                            <field name="nfc_pr_type" readonly="1"/>
+                            <field name="nfc_qa_required" readonly="1"/>
+                            <field name="nfc_qa_passed" readonly="1"/>
+                            <field name="nfc_qa_done_by" readonly="1" invisible="not nfc_qa_passed"/>
+                            <field name="nfc_qa_date" readonly="1" invisible="not nfc_qa_passed"/>
+                        </group>
+                        <group string="Kết Quả">
+                            <field name="nfc_qa_note" nolabel="1" readonly="1"
+                                   invisible="not nfc_qa_note"
+                                   placeholder="Chưa có kết quả QA"/>
+                        </group>
+                    </group>
+
+                    <!-- Callout warning khi chưa QA -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="nfc_qa_passed or state in ('done', 'cancel')">
+                        <strong>Cảnh báo:</strong> Hàng SKU này cần QA Pass trước khi xác nhận nhập kho.
+                        Hàng đang ở khu <b>Biệt Trữ</b>.
+                    </div>
+                    <div class="alert alert-success" role="alert"
+                         invisible="not nfc_qa_passed">
+                        <strong>QA Đã Pass</strong> — Được phép nhập vào kho chính.
+                    </div>
+
+                    <!-- QA action buttons -->
+                    <div invisible="nfc_qa_passed or state in ('done', 'cancel')">
+                        <button name="action_nfc_qa_pass" type="object"
+                                string="Xác Nhận QA Pass" class="btn-success me-2"/>
+                        <button name="action_nfc_qa_fail" type="object"
+                                string="QA Fail — Ghi Nhận Lỗi" class="btn-danger"/>
+                    </div>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- Groups -->
+        <record id="group_nfc_pr_user" model="res.groups">
+            <field name="name">Purchase Request User</field>
+            <field name="category_id" ref="base.module_category_purchase"/>
+            <field name="comment">Tạo và theo dõi yêu cầu mua hàng của mình</field>
+        </record>
+
+        <record id="group_nfc_pr_manager" model="res.groups">
+            <field name="name">Purchase Request Manager</field>
+            <field name="category_id" ref="base.module_category_purchase"/>
+            <field name="implied_ids" eval="[(4, ref('group_nfc_pr_user'))]"/>
+            <field name="comment">Duyệt yêu cầu mua hàng của nhân viên trong bộ phận</field>
+        </record>
+
+        <record id="group_nfc_purchase_manager" model="res.groups">
+            <field name="name">NFC Purchase Manager</field>
+            <field name="category_id" ref="base.module_category_purchase"/>
+            <field name="implied_ids" eval="[(4, ref('group_nfc_pr_manager'))]"/>
+            <field name="comment">Xác nhận PR, tạo RFQ/PO, duyệt theo hạn mức</field>
+        </record>
+
+        <!-- Record Rules -->
+        <record id="rule_pr_personal" model="ir.rule">
+            <field name="name">PR: Người dùng chỉ thấy PR của mình hoặc bộ phận</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="groups" eval="[(4, ref('group_nfc_pr_user'))]"/>
+            <field name="domain_force">
+                ['|',
+                    ('requester_id', '=', user.id),
+                    ('department_id.member_ids', 'in', [user.id])
+                ]
+            </field>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_pr_manager_all" model="ir.rule">
+            <field name="name">PR: Manager thấy tất cả PR</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="groups" eval="[(4, ref('group_nfc_pr_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit PO form: thêm PR link + validation gate + CEO approval -->
+    <record id="view_purchase_order_form_nfc" model="ir.ui.view">
+        <field name="name">purchase.order.form.nfc</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Thêm smart button CEO approval trước button_box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_ceo_approve" type="object"
+                        class="oe_stat_button" icon="fa-check-circle"
+                        invisible="not requires_ceo_approval or ceo_approved">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value text-danger">Cần BGĐ Duyệt</span>
+                        <span class="o_stat_text">&gt;50 triệu</span>
+                    </div>
+                </button>
+                <button type="object" name="action_ceo_approve"
+                        class="oe_stat_button" icon="fa-check-circle"
+                        invisible="not requires_ceo_approval or not ceo_approved">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value text-success">BGĐ Đã Duyệt</span>
+                        <span class="o_stat_text"><field name="ceo_approved_by" readonly="1"/></span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!-- Thêm PR link dưới field origin -->
+            <xpath expr="//field[@name='partner_ref']" position="after">
+                <field name="purchase_request_id" readonly="1"
+                       invisible="not purchase_request_id"/>
+            </xpath>
+
+            <!-- Tab Validation Gate -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Validation Gate (NFC)" name="nfc_validation">
+                    <group string="Kiểm Tra Trước Khi Xác Nhận PO">
+                        <group>
+                            <field name="vendor_quote_count"
+                                   help="Số vendor đã báo giá. PR-SKU yêu cầu ≥ 3"/>
+                            <field name="has_quote_evidence"/>
+                            <field name="bypass_quote_requirement"/>
+                            <field name="bypass_reason"
+                                   invisible="not bypass_quote_requirement"
+                                   required="bypass_quote_requirement"/>
+                        </group>
+                        <group string="BGĐ Phê Duyệt (>50 triệu)" invisible="not requires_ceo_approval">
+                            <field name="requires_ceo_approval" readonly="1"/>
+                            <field name="ceo_approved" readonly="1"/>
+                            <field name="ceo_approved_by" readonly="1" invisible="not ceo_approved"/>
+                            <field name="ceo_approved_date" readonly="1" invisible="not ceo_approved"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Inherit PO list: thêm cột PR và CEO approval indicator -->
+    <record id="view_purchase_order_list_nfc" model="ir.ui.view">
+        <field name="name">purchase.order.list.nfc</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="before">
+                <field name="purchase_request_id" optional="show" string="PR"/>
+            </xpath>
+            <xpath expr="//field[@name='amount_total']" position="after">
+                <field name="requires_ceo_approval" optional="show" string="Cần BGĐ"/>
+                <field name="ceo_approved" optional="show" string="BGĐ Duyệt"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

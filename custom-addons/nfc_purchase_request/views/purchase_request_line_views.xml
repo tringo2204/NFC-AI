@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Standalone list view for PR lines (used in reporting / pivot) -->
+    <record id="view_purchase_request_line_list" model="ir.ui.view">
+        <field name="name">purchase.request.line.list</field>
+        <field name="model">purchase.request.line</field>
+        <field name="arch" type="xml">
+            <list string="Chi Tiết Yêu Cầu Mua Hàng">
+                <field name="request_id"/>
+                <field name="pr_type" widget="badge"/>
+                <field name="product_id"/>
+                <field name="description"/>
+                <field name="technical_spec"/>
+                <field name="qty"/>
+                <field name="uom_id" groups="uom.group_uom"/>
+                <field name="estimated_price"/>
+                <field name="subtotal"/>
+                <field name="date_required"/>
+                <field name="request_state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_purchase_request_line" model="ir.actions.act_window">
+        <field name="name">Chi Tiết Yêu Cầu</field>
+        <field name="res_model">purchase.request.line</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

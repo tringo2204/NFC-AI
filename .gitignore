@@ -1,0 +1,37 @@
+# Odoo Enterprise source (quá lớn, không commit)
+enterprise-18.0/
+
+# Odoo config nhạy cảm
+odoo.conf
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Env files
+.env
+.env.*
+!.env.example
+!ai/.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+
+# Redis
+dump.rdb
+
+# Seed scripts output
+*.csv.bak

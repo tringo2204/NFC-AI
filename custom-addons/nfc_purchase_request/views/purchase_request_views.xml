@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Search ─────────────────────────────────────────────────── -->
+    <record id="view_purchase_request_search" model="ir.ui.view">
+        <field name="name">purchase.request.search</field>
+        <field name="model">purchase.request</field>
+        <field name="arch" type="xml">
+            <search string="Tìm Yêu Cầu Mua Hàng">
+                <field name="name" string="Số PR"/>
+                <field name="requester_id"/>
+                <field name="department_id"/>
+                <field name="approver_id"/>
+                <field name="purchase_user_id"/>
+                <separator/>
+                <filter string="Bản Nháp" name="draft" domain="[('state','=','draft')]"/>
+                <filter string="Chờ Duyệt" name="submitted" domain="[('state','=','submitted')]"/>
+                <filter string="Đã Duyệt" name="approved" domain="[('state','=','approved')]"/>
+                <filter string="MH Xác Nhận" name="accepted" domain="[('state','=','accepted')]"/>
+                <filter string="Bị Từ Chối" name="rejected" domain="[('state','=','rejected')]"/>
+                <separator/>
+                <filter string="PR-SKU" name="sku" domain="[('pr_type','=','sku')]"/>
+                <filter string="PR-Investment" name="investment" domain="[('pr_type','=','investment')]"/>
+                <filter string="PR-Operation" name="operation" domain="[('pr_type','=','operation')]"/>
+                <separator/>
+                <filter string="PR của tôi" name="my_pr" domain="[('requester_id','=',uid)]"/>
+                <filter string="Tôi cần duyệt" name="my_approval" domain="[('approver_id','=',uid),('state','=','submitted')]"/>
+                <group expand="0" string="Nhóm theo">
+                    <filter string="Loại PR" name="group_type" context="{'group_by': 'pr_type'}"/>
+                    <filter string="Trạng thái" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Phòng ban" name="group_dept" context="{'group_by': 'department_id'}"/>
+                    <filter string="Tháng" name="group_month" context="{'group_by': 'date_request:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ── Tree ───────────────────────────────────────────────────── -->
+    <record id="view_purchase_request_list" model="ir.ui.view">
+        <field name="name">purchase.request.list</field>
+        <field name="model">purchase.request</field>
+        <field name="arch" type="xml">
+            <list string="Yêu Cầu Mua Hàng"
+                  decoration-warning="state == 'submitted'"
+                  decoration-success="state == 'accepted'"
+                  decoration-danger="state in ('rejected', 'cancelled')">
+                <field name="name"/>
+                <field name="pr_type"/>
+                <field name="requester_id" widget="many2one_avatar_user"/>
+                <field name="department_id"/>
+                <field name="date_request"/>
+                <field name="date_required"/>
+                <field name="approver_id" widget="many2one_avatar_user"/>
+                <field name="purchase_user_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="rfq_count" string="RFQ/PO" optional="show"/>
+                <field name="state" widget="badge"
+                       options="{'classes': {
+                           'draft': 'secondary',
+                           'submitted': 'warning',
+                           'approved': 'info',
+                           'accepted': 'success',
+                           'rejected': 'danger',
+                           'cancelled': 'danger'
+                       }}"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ── Kanban ─────────────────────────────────────────────────── -->
+    <record id="view_purchase_request_kanban" model="ir.ui.view">
+        <field name="name">purchase.request.kanban</field>
+        <field name="model">purchase.request</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column"
+                    group_create="false">
+                <field name="name"/>
+                <field name="pr_type"/>
+                <field name="requester_id"/>
+                <field name="date_required"/>
+                <field name="state"/>
+                <field name="rfq_count"/>
+                <field name="purpose"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="d-flex justify-content-between mb-1">
+                                <strong><field name="name"/></strong>
+                                <field name="pr_type" widget="badge"/>
+                            </div>
+                            <div class="text-muted small mb-2">
+                                <field name="purpose"/>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="small text-muted">
+                                    <i class="fa fa-calendar me-1" title="Ngày cần hàng"/>
+                                    <field name="date_required" widget="date"/>
+                                </span>
+                                <field name="requester_id" widget="many2one_avatar_user" readonly="1"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ── Form ───────────────────────────────────────────────────── -->
+    <record id="view_purchase_request_form" model="ir.ui.view">
+        <field name="name">purchase.request.form</field>
+        <field name="model">purchase.request</field>
+        <field name="arch" type="xml">
+            <form string="Yêu Cầu Mua Hàng">
+                <header>
+                    <button name="action_submit" string="Gửi Duyệt" type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <!-- Manager actions via wizard -->
+                    <button name="%(nfc_purchase_request.action_pr_approve_wizard)d"
+                            string="Xử Lý (Duyệt / Từ Chối / Trả Về)" type="action"
+                            class="btn-primary"
+                            invisible="state != 'submitted'"
+                            groups="nfc_purchase_request.group_nfc_pr_manager"/>
+                    <!-- Purchase team -->
+                    <button name="action_accept" string="Xác Nhận (Mua Hàng)" type="object"
+                            class="btn-primary"
+                            invisible="state != 'approved'"
+                            groups="nfc_purchase_request.group_nfc_purchase_manager"/>
+                    <button name="action_return_to_draft" string="Yêu Cầu Chỉnh Sửa" type="object"
+                            invisible="state != 'approved'"
+                            groups="nfc_purchase_request.group_nfc_purchase_manager"/>
+                    <button name="action_create_rfq" string="Tạo RFQ" type="object"
+                            class="btn-success"
+                            invisible="state != 'accepted'"/>
+                    <button name="action_cancel" string="Hủy PR" type="object"
+                            invisible="state in ('rejected','cancelled','accepted')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,submitted,approved,accepted"/>
+                </header>
+
+                <sheet>
+                    <!-- Smart buttons -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_rfq" type="object"
+                                class="oe_stat_button" icon="fa-shopping-cart"
+                                invisible="rfq_count == 0">
+                            <field name="rfq_count" widget="statinfo" string="RFQ/PO"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <!-- Reject reason banner -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not reject_reason">
+                        <strong>Lý do trả về / từ chối: </strong>
+                        <field name="reject_reason" readonly="1"/>
+                    </div>
+
+                    <group>
+                        <group string="Thông Tin Chung">
+                            <field name="pr_type" widget="radio"
+                                   readonly="state not in ('draft',)"/>
+                            <field name="source_type"/>
+                            <field name="source_ref"
+                                   invisible="source_type == 'adhoc'"/>
+                            <field name="date_request" readonly="1"/>
+                            <field name="date_required"
+                                   readonly="state not in ('draft',)"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group string="Người Liên Quan">
+                            <field name="requester_id" widget="many2one_avatar_user"
+                                   readonly="state not in ('draft',)"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="approver_id"
+                                   readonly="state not in ('draft','submitted')"/>
+                            <field name="purchase_user_id" widget="many2one_avatar_user"
+                                   readonly="state not in ('approved','accepted')"
+                                   groups="nfc_purchase_request.group_nfc_purchase_manager"/>
+                        </group>
+                    </group>
+
+                    <group string="Mục Đích &amp; Ghi Chú">
+                        <field name="purpose" nolabel="1"
+                               placeholder="Ghi rõ mục đích sử dụng và lý do cần mua..."
+                               readonly="state not in ('draft',)"/>
+                    </group>
+
+                    <!-- SKU-specific -->
+                    <group string="Thông Tin Kế Hoạch" invisible="pr_type != 'sku'">
+                        <field name="planning_confirmed"
+                               groups="nfc_purchase_request.group_nfc_purchase_manager"/>
+                    </group>
+
+                    <!-- Investment-specific -->
+                    <group string="Thông Tin Đầu Tư" invisible="pr_type != 'investment'">
+                        <field name="investment_amount"/>
+                        <field name="asset_type" placeholder="VD: Máy đóng gói tự động, Máy sấy..."/>
+                        <field name="investment_justification"
+                               placeholder="Lý do đầu tư, ROI dự kiến, thay thế thiết bị cũ..."/>
+                    </group>
+
+                    <!-- Lines -->
+                    <notebook>
+                        <page string="Danh Sách Hàng Hóa / Dịch Vụ">
+                            <field name="line_ids"
+                                   readonly="state not in ('draft',)"
+                                   context="{'default_pr_type': pr_type}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"
+                                           domain="[('purchase_ok','=',True)]"
+                                           optional="show"/>
+                                    <field name="description"/>
+                                    <field name="technical_spec" optional="show"/>
+                                    <field name="qty"/>
+                                    <field name="uom_id" groups="uom.group_uom"/>
+                                    <field name="estimated_price" optional="show"/>
+                                    <field name="subtotal" optional="show"/>
+                                    <field name="note" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Ghi Chú Thêm">
+                            <field name="note" placeholder="Thông tin bổ sung, điều khoản đặc biệt..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Window Action ──────────────────────────────────────────── -->
+    <record id="action_purchase_request" model="ir.actions.act_window">
+        <field name="name">Yêu Cầu Mua Hàng</field>
+        <field name="res_model">purchase.request</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="context">{'search_default_my_pr': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Tạo yêu cầu mua hàng đầu tiên!
+            </p>
+            <p>Chọn loại PR phù hợp: SKU, Investment hoặc Operation</p>
+        </field>
+    </record>
+
+    <record id="action_purchase_request_pending" model="ir.actions.act_window">
+        <field name="name">PR Cần Duyệt</field>
+        <field name="res_model">purchase.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('approver_id','=',uid),('state','=','submitted')]</field>
+        <field name="context">{'search_default_submitted': 1}</field>
+    </record>
+
+    <record id="action_purchase_request_all" model="ir.actions.act_window">
+        <field name="name">Tất Cả PR</field>
+        <field name="res_model">purchase.request</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="context">{}</field>
+    </record>
+
+</odoo>

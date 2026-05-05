@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pr_action_wizard_form" model="ir.ui.view">
+        <field name="name">pr.action.wizard.form</field>
+        <field name="model">pr.action.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Xử Lý Yêu Cầu Mua Hàng">
+                <group>
+                    <field name="request_id" readonly="1"/>
+                    <field name="action" widget="radio"/>
+                    <field name="reason" placeholder="Nhập lý do (bắt buộc khi từ chối hoặc trả về)..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Xác Nhận" class="btn-primary"/>
+                    <button special="cancel" string="Hủy"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action mở wizard từ PR form -->
+    <record id="action_pr_approve_wizard" model="ir.actions.act_window">
+        <field name="name">Xử Lý PR</field>
+        <field name="res_model">pr.action.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{
+            'default_request_id': active_id,
+            'default_action': 'approve',
+        }</field>
+    </record>
+</odoo>

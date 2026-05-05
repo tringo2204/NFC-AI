@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="mail_template_pr_submitted" model="mail.template">
+            <field name="name">PR: Yêu Cầu Duyệt</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="subject">{{ object.name }} - Chờ Duyệt</field>
+            <field name="body_html"><![CDATA[
+<div>
+    <p>Xin chào <b>{{ object.approver_id.name }}</b>,</p>
+    <p>Yêu cầu mua hàng <b>{{ object.name }}</b> đã được gửi để bạn xem xét và phê duyệt.</p>
+    <ul>
+        <li>Người yêu cầu: <b>{{ object.requester_id.name }}</b></li>
+        <li>Phòng ban: <b>{{ object.department_id.name or 'N/A' }}</b></li>
+        <li>Loại PR: <b>{{ object.pr_type }}</b></li>
+        <li>Ngày cần hàng: <b>{{ object.date_required }}</b></li>
+    </ul>
+    <p>Vui lòng truy cập hệ thống để duyệt.</p>
+</div>
+            ]]></field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <record id="mail_template_pr_approved" model="mail.template">
+            <field name="name">PR: Đã Duyệt</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="subject">{{ object.name }} - Đã Được Duyệt</field>
+            <field name="body_html"><![CDATA[
+<div>
+    <p>Xin chào <b>{{ object.requester_id.name }}</b>,</p>
+    <p>Yêu cầu mua hàng <b>{{ object.name }}</b> đã được <b>{{ object.approver_id.name }}</b> duyệt.</p>
+    <p>Phòng Mua Hàng sẽ tiếp nhận và xác nhận trong thời gian sớm nhất.</p>
+</div>
+            ]]></field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <record id="mail_template_pr_rejected" model="mail.template">
+            <field name="name">PR: Bị Từ Chối</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="subject">{{ object.name }} - Bị Từ Chối</field>
+            <field name="body_html"><![CDATA[
+<div>
+    <p>Xin chào <b>{{ object.requester_id.name }}</b>,</p>
+    <p>Yêu cầu mua hàng <b>{{ object.name }}</b> đã bị từ chối.</p>
+    <p><b>Lý do:</b> {{ object.reject_reason or 'Không có lý do cụ thể' }}</p>
+</div>
+            ]]></field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <record id="mail_template_pr_accepted" model="mail.template">
+            <field name="name">PR: Phòng Mua Hàng Xác Nhận</field>
+            <field name="model_id" ref="model_purchase_request"/>
+            <field name="subject">{{ object.name }} - Mua Hàng Đã Xác Nhận</field>
+            <field name="body_html"><![CDATA[
+<div>
+    <p>Xin chào <b>{{ object.requester_id.name }}</b>,</p>
+    <p>Yêu cầu mua hàng <b>{{ object.name }}</b> đã được Phòng Mua Hàng xác nhận.</p>
+    <p>Chúng tôi sẽ tiến hành lấy báo giá và thông báo tiến độ cho bạn.</p>
+</div>
+            ]]></field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

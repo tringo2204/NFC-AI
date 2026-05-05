@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Root menu dưới Purchase -->
+    <menuitem id="menu_nfc_purchase_root"
+              name="Yêu Cầu Mua Hàng"
+              parent="purchase.menu_purchase_root"
+              sequence="5"/>
+
+    <!-- PR của tôi -->
+    <menuitem id="menu_my_purchase_request"
+              name="PR Của Tôi"
+              parent="menu_nfc_purchase_root"
+              action="action_purchase_request"
+              sequence="10"/>
+
+    <!-- PR cần tôi duyệt -->
+    <menuitem id="menu_pending_approval"
+              name="Chờ Tôi Duyệt"
+              parent="menu_nfc_purchase_root"
+              action="action_purchase_request_pending"
+              sequence="20"/>
+
+    <!-- Tất cả PR (manager) -->
+    <menuitem id="menu_all_purchase_request"
+              name="Tất Cả PR"
+              parent="menu_nfc_purchase_root"
+              action="action_purchase_request_all"
+              sequence="30"
+              groups="nfc_purchase_request.group_nfc_pr_manager"/>
+
+    <!-- Chi tiết dòng PR -->
+    <menuitem id="menu_purchase_request_lines"
+              name="Chi Tiết Yêu Cầu"
+              parent="menu_nfc_purchase_root"
+              action="action_purchase_request_line"
+              sequence="40"
+              groups="nfc_purchase_request.group_nfc_purchase_manager"/>
+
+</odoo>
