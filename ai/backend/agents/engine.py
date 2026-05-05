@@ -47,14 +47,22 @@ Quy tắc bắt buộc:
   "suggestion": "Gợi ý hành động ngắn gọn",
   "price_context": {{
     "avg_price": số (giá TB 6 tháng),
-    "min_price": số (giá thấp nhất),
-    "max_price": số (giá cao nhất),
-    "suggested_price": số (giá đề xuất thương lượng — thường là avg hoặc thấp hơn 5%),
+    "min_price": số (giá thấp nhất lịch sử),
+    "max_price": số (giá cao nhất lịch sử),
+    "suggested_price": số (giá đề xuất = avg hoặc thấp hơn 5%),
     "best_supplier": "tên NCC giá tốt nhất",
     "best_supplier_price": số,
     "recent_history": [
       {{"date": "YYYY-MM-DD", "price": số, "supplier": "tên", "qty": số}},
       ... (tối đa 3 dòng gần nhất)
+    ],
+    "chart_data": [
+      {{"date": "YYYY-MM-DD", "price": số, "supplier": "tên", "qty": số}},
+      ... (TẤT CẢ điểm từ get_price_history, sắp xếp theo ngày tăng dần — dùng vẽ sparkline)
+    ],
+    "supplier_compare": [
+      {{"supplier": "tên", "avg_price": số, "min_price": số, "max_price": số, "count": số, "last_date": "YYYY-MM-DD"}},
+      ... (từ get_supplier_comparison — TẤT CẢ NCC)
     ]
   }},
   "actions": [],

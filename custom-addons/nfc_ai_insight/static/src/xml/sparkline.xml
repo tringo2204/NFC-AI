@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <t t-name="nfc_ai_insight.PriceSparkline">
+    <div class="nfc-ai-sparkline-wrap" t-if="svgData">
+      <svg t-att-width="props.width" t-att-height="props.height"
+           style="overflow:visible; display:block;">
+        <defs>
+          <linearGradient id="nfc-spark-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#3b82f6" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.02"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Area fill -->
+        <path t-att-d="svgData.areaPath" fill="url(#nfc-spark-grad)" stroke="none"/>
+
+        <!-- Line -->
+        <polyline
+          t-att-points="svgData.points"
+          fill="none" stroke="#3b82f6" stroke-width="2"
+          stroke-linejoin="round" stroke-linecap="round"/>
+
+        <!-- Current price line (dashed red if above avg) -->
+        <line t-if="svgData.currentY"
+              t-att-x1="svgData.pad.left"
+              t-att-y1="svgData.currentY"
+              t-att-x2="svgData.pad.left + svgData.W"
+              t-att-y2="svgData.currentY"
+              stroke="#ef4444" stroke-width="1.5"
+              stroke-dasharray="4,3" opacity="0.8"/>
+
+        <!-- Dots -->
+        <t t-foreach="svgData.dots" t-as="dot" t-key="dot_index">
+          <circle t-att-cx="dot.cx" t-att-cy="dot.cy"
+                  r="3" fill="#fff" stroke="#3b82f6" stroke-width="1.5"/>
+        </t>
+
+        <!-- X labels -->
+        <text t-att-x="svgData.pad.left"
+              t-att-y="svgData.pad.top + svgData.H + 14"
+              font-size="9" fill="#9ca3af">
+          <t t-esc="svgData.firstLabel"/>
+        </text>
+        <text t-att-x="svgData.pad.left + svgData.W"
+              t-att-y="svgData.pad.top + svgData.H + 14"
+              font-size="9" fill="#9ca3af" text-anchor="end">
+          <t t-esc="svgData.lastLabel"/>
+        </text>
+      </svg>
+    </div>
+    <div t-else="1" class="nfc-ai-sparkline-empty">
+      Không đủ dữ liệu để vẽ biểu đồ
+    </div>
+  </t>
+
+</templates>

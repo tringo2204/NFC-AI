@@ -17,15 +17,27 @@ class PriceRecord(BaseModel):
     qty:      float = 0
 
 
+class SupplierStat(BaseModel):
+    """Thống kê giá theo từng NCC — dùng cho SupplierCompareCard."""
+    supplier:  str
+    avg_price: float
+    min_price: float
+    max_price: float
+    count:     int
+    last_date: str = ""
+
+
 class PriceContext(BaseModel):
     """Dữ liệu giá structured — panel render trực tiếp, không parse text."""
-    avg_price:        Optional[float] = None   # TB 6 tháng
-    min_price:        Optional[float] = None   # Thấp nhất
-    max_price:        Optional[float] = None   # Cao nhất
-    suggested_price:  Optional[float] = None   # Giá đề xuất thương lượng
-    best_supplier:    Optional[str]   = None   # NCC giá tốt nhất
+    avg_price:        Optional[float] = None
+    min_price:        Optional[float] = None
+    max_price:        Optional[float] = None
+    suggested_price:  Optional[float] = None
+    best_supplier:    Optional[str]   = None
     best_supplier_price: Optional[float] = None
-    recent_history:   list[PriceRecord] = []   # 3 giao dịch gần nhất
+    recent_history:   list[PriceRecord] = []    # 3 dòng gần nhất (table)
+    chart_data:       list[PriceRecord] = []    # 12 tháng (sparkline)
+    supplier_compare: list[SupplierStat] = []   # so sánh NCC
 
 
 class DecisionOutput(BaseModel):

@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-  <!--
-    Inject widget="nfc_ai_insight" vào field price_unit
-    bên trong inline order_line list của purchase.order form.
-
-    Approach theo ERP AI Platform canvas (Sprint 3):
-      - Widget WRAP field gốc (không tạo column riêng)
-      - price_unit hiện giá bình thường + badge AI ngay cạnh
-      - 0 column picker cần thiết
-  -->
+  <!-- Sprint 3: widget="nfc_ai_insight" trên price_unit trong order_line -->
   <record id="view_purchase_order_form_ai_insight" model="ir.ui.view">
     <field name="name">purchase.order.form.nfc.ai.insight</field>
     <field name="model">purchase.order</field>
@@ -17,6 +9,40 @@
     <field name="arch" type="xml">
       <xpath expr="//field[@name='order_line']//field[@name='price_unit']" position="attributes">
         <attribute name="widget">nfc_ai_insight</attribute>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- Sprint 4: Decision Panel — callout cảnh báo AI trên PO/RFQ form -->
+  <record id="view_purchase_order_form_ai_decision_panel" model="ir.ui.view">
+    <field name="name">purchase.order.form.nfc.ai.decision.panel</field>
+    <field name="model">purchase.order</field>
+    <field name="inherit_id" ref="purchase.purchase_order_form"/>
+    <field name="priority">20</field>
+    <field name="arch" type="xml">
+      <!-- Thêm Decision Panel sau chatterbox, trước order_line -->
+      <xpath expr="//field[@name='order_line']" position="before">
+        <div class="nfc-ai-decision-panel"
+             invisible="state not in ('draft','sent')">
+          <div class="nfc-ai-decision-panel-header">
+            <i class="fa fa-robot me-2"/>
+            <strong>NFC AI — Phân tích đơn hàng</strong>
+            <span class="nfc-ai-decision-panel-hint">
+              AI sẽ phân tích từng dòng sản phẩm khi bạn nhập giá
+            </span>
+          </div>
+          <div class="nfc-ai-decision-panel-body">
+            <div class="nfc-ai-dp-item">
+              <i class="fa fa-check-circle" style="color:#198754"/> Badge <b>xanh</b> = giá trong ngưỡng lịch sử
+            </div>
+            <div class="nfc-ai-dp-item">
+              <i class="fa fa-exclamation-triangle" style="color:#f59e0b"/> Badge <b>vàng</b> = giá cao hơn TB 5–15%
+            </div>
+            <div class="nfc-ai-dp-item">
+              <i class="fa fa-times-circle" style="color:#dc3545"/> Badge <b>đỏ</b> = cần xem lại, cao hơn &gt;15%
+            </div>
+          </div>
+        </div>
       </xpath>
     </field>
   </record>

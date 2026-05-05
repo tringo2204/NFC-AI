@@ -12,6 +12,8 @@
     'assets': {
         'web.assets_backend': [
             'nfc_ai_insight/static/src/services/ai_service.js',
+            'nfc_ai_insight/static/src/components/sparkline.js',
+            'nfc_ai_insight/static/src/xml/sparkline.xml',
             'nfc_ai_insight/static/src/components/insight_badge.js',
             'nfc_ai_insight/static/src/xml/insight_badge.xml',
         ],

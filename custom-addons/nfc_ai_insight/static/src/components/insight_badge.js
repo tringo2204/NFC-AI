@@ -6,16 +6,22 @@ import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { MonetaryField } from "@web/views/fields/monetary/monetary_field";
 import { FloatField } from "@web/views/fields/float/float_field";
+import { PriceSparkline } from "./sparkline";
 
 // ── Popover Panel (render ngoài table qua Odoo Popover system) ─────────────
 class InsightPanel extends Component {
-    static template = "nfc_ai_insight.InsightPanel";
+    static template  = "nfc_ai_insight.InsightPanel";
+    static components = { PriceSparkline };
     static props = {
         decision:   Object,
         logId:      { type: [Number, Boolean], optional: true },
         onFeedback: { type: Function, optional: true },
         close:      Function,
     };
+    setup() {
+        this.state = useState({ tab: "overview" }); // overview | chart | suppliers
+    }
+    setTab = (tab) => { this.state.tab = tab; }
 
     levelLabel(level) {
         return { good:"Tốt", normal:"Bình thường", high:"Cảnh báo", critical:"Cần xem lại", no_data:"Chưa có data" }[level] || level;
@@ -168,5 +174,49 @@ style.textContent = `
 .nfc-ai-history-price    { text-align:right; white-space:nowrap; }
 .nfc-ai-meta { font-size:11px; color:#6c757d; display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; padding-top:6px; border-top:1px solid #f0f0f0; }
 .nfc-ai-panel-footer { display:flex; gap:6px; padding:8px 12px; border-top:1px solid #dee2e6; background:#f8f9fa; border-radius:0 0 6px 6px; }
+
+/* Header meta */
+.nfc-ai-meta-inline { display:flex; gap:6px; align-items:center; font-size:11px; color:#6c757d; }
+.nfc-ai-cache-pill  { background:#dbeafe; color:#1d4ed8; padding:1px 5px; border-radius:4px; font-size:10px; }
+
+/* Tabs */
+.nfc-ai-tabs { display:flex; gap:2px; padding:4px 12px 0; border-bottom:1px solid #dee2e6; background:#f8f9fa; }
+.nfc-ai-tab  {
+  padding:4px 10px; font-size:11px; font-weight:500; border:none; background:none;
+  border-bottom:2px solid transparent; cursor:pointer; color:#6c757d;
+}
+.nfc-ai-tab.active { color:#0d6efd; border-bottom-color:#0d6efd; }
+.nfc-ai-tab:hover:not(.active) { color:#495057; }
+
+/* Supplier table */
+.nfc-ai-supplier-table { width:100%; border-collapse:collapse; font-size:11px; }
+.nfc-ai-supplier-table th { padding:4px; color:#6c757d; font-weight:600; border-bottom:1px solid #dee2e6; text-align:left; }
+.nfc-ai-supplier-table td { padding:4px; border-bottom:1px solid #f0f0f0; }
+.nfc-ai-best-row { background:#f0fdf4; }
+
+/* Chart */
+.nfc-ai-chart-title { font-size:11px; font-weight:600; color:#6c757d; margin-bottom:6px; }
+.nfc-ai-chart-legend { display:flex; gap:12px; font-size:10px; color:#9ca3af; margin-top:4px; align-items:center; }
+.nfc-ai-legend-line { display:inline-block; width:20px; height:2px; background:#3b82f6; border-radius:1px; }
+.nfc-ai-legend-dash { display:inline-block; width:20px; height:2px; background:#ef4444; border-radius:1px; }
+.nfc-ai-sparkline-wrap { margin:4px 0; }
+.nfc-ai-sparkline-empty { font-size:11px; color:#9ca3af; text-align:center; padding:12px; }
+
+/* Decision Panel trên RFQ form */
+.nfc-ai-decision-panel {
+  margin: 0 0 12px; padding: 10px 14px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+  border: 1px solid #bfdbfe; border-radius: 8px;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.nfc-ai-decision-panel-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: #1e40af; flex-shrink: 0;
+}
+.nfc-ai-decision-panel-hint { font-size: 11px; color: #6b7280; font-weight: 400; }
+.nfc-ai-decision-panel-body {
+  display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #374151;
+}
+.nfc-ai-dp-item { display: flex; align-items: center; gap: 4px; }
 `;
 document.head.appendChild(style);
