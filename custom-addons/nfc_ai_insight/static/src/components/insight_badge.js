@@ -209,22 +209,5 @@ style.textContent = `
 .nfc-ai-legend-dash { display:inline-block; width:20px; height:2px; background:#ef4444; border-radius:1px; }
 .nfc-ai-sparkline-wrap { margin:4px 0; }
 .nfc-ai-sparkline-empty { font-size:11px; color:#9ca3af; text-align:center; padding:12px; }
-
-/* Decision Panel trên RFQ form */
-.nfc-ai-decision-panel {
-  margin: 0 0 12px; padding: 10px 14px;
-  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
-  border: 1px solid #bfdbfe; border-radius: 8px;
-  display: flex; align-items: flex-start; gap: 12px;
-}
-.nfc-ai-decision-panel-header {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 13px; color: #1e40af; flex-shrink: 0;
-}
-.nfc-ai-decision-panel-hint { font-size: 11px; color: #6b7280; font-weight: 400; }
-.nfc-ai-decision-panel-body {
-  display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #374151;
-}
-.nfc-ai-dp-item { display: flex; align-items: center; gap: 4px; }
 `;
 document.head.appendChild(style);

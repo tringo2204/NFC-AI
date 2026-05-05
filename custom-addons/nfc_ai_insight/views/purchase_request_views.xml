@@ -13,36 +13,4 @@
     </field>
   </record>
 
-  <!-- Callout giải thích badge — chỉ khi PR còn sửa được dòng -->
-  <record id="view_purchase_request_form_ai_decision_panel" model="ir.ui.view">
-    <field name="name">purchase.request.form.nfc.ai.decision.panel</field>
-    <field name="model">purchase.request</field>
-    <field name="inherit_id" ref="nfc_purchase_request.view_purchase_request_form"/>
-    <field name="priority">25</field>
-    <field name="arch" type="xml">
-      <xpath expr="//field[@name='line_ids']" position="before">
-        <div class="nfc-ai-decision-panel" invisible="state != 'draft'">
-          <div class="nfc-ai-decision-panel-header">
-            <i class="fa fa-robot me-2"/>
-            <strong>NFC AI — Ước tính giá trên PR</strong>
-            <span class="nfc-ai-decision-panel-hint">
-              Nhập đơn giá ước tính để AI so với lịch sử mua. Nút <b>Ghi đè</b> điền giá đề xuất vào ô.
-            </span>
-          </div>
-          <div class="nfc-ai-decision-panel-body">
-            <div class="nfc-ai-dp-item">
-              <i class="fa fa-check-circle" style="color:#198754"/> Badge <b>xanh</b> = mức ước tính gần lịch sử
-            </div>
-            <div class="nfc-ai-dp-item">
-              <i class="fa fa-exclamation-triangle" style="color:#f59e0b"/> Badge <b>vàng</b> = cao hơn TB 5–15%
-            </div>
-            <div class="nfc-ai-dp-item">
-              <i class="fa fa-times-circle" style="color:#dc3545"/> Badge <b>đỏ</b> = cần xem lại (&gt;15%)
-            </div>
-          </div>
-        </div>
-      </xpath>
-    </field>
-  </record>
-
 </odoo>
