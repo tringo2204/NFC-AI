@@ -137,7 +137,7 @@ export class NfcMultilineChartField extends Component {
                                 class="nfc-mlc-line"
                                 fill="none"
                                 t-att-stroke="p.color"
-                                stroke-width="2.5"
+                                stroke-width="2"
                                 stroke-linejoin="round"
                                 stroke-linecap="round"
                                 t-att-points="p.pointsStr"
@@ -147,9 +147,9 @@ export class NfcMultilineChartField extends Component {
                                     class="nfc-mlc-dot"
                                     t-att-cx="d.x"
                                     t-att-cy="d.y"
-                                    r="4"
+                                    r="3"
                                     t-att-fill="p.color"
-                                    stroke-width="1.5"
+                                    stroke-width="1.25"
                                 />
                             </t>
                         </t>
@@ -195,9 +195,9 @@ export class NfcMultilineChartField extends Component {
 
         const cats = data.categories;
         const series = data.series || [];
-        const W = 680;
-        const H = 240;
-        const pad = { t: 10, r: 20, b: 36, l: 56 };
+        const W = 520;
+        const H = 158;
+        const pad = { t: 6, r: 12, b: 26, l: 44 };
         const innerW = W - pad.l - pad.r;
         const innerH = H - pad.t - pad.b;
         const plot = { x0: pad.l, y0: pad.t, x1: pad.l + innerW, y1: pad.t + innerH, w: innerW, h: innerH };
@@ -254,7 +254,7 @@ export class NfcMultilineChartField extends Component {
 
         const xlabels = cats.map((c, i) => ({
             x: xScale(i),
-            y: H - 10,
+            y: H - 6,
             text: formatXCategory(c),
         }));
 
@@ -381,39 +381,39 @@ const style = document.createElement("style");
 style.textContent = `
 .nfc-multiline-chart-field { width: 100%; max-width: 100%; }
 .nfc-mlc-card {
-  border: 1px solid var(--border-color, #dee2e6);
-  border-radius: 8px;
+  border: 1px solid var(--border-color, #e9ecef);
+  border-radius: 6px;
   background: var(--nfc-mlc-card-bg, var(--o-view-background-color, #fff));
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
-  padding: 12px 14px 10px;
-  color: var(--body-color, #212529);
+  box-shadow: none;
+  padding: 8px 10px 6px;
+  color: var(--body-color, #495057);
 }
-.nfc-mlc-head { margin-bottom: 8px; }
+.nfc-mlc-head { margin-bottom: 4px; }
 .nfc-mlc-title {
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  margin: 0 0 8px 0;
-  line-height: 1.35;
-  color: var(--body-color, #212529);
+  margin: 0 0 4px 0;
+  line-height: 1.3;
+  color: var(--body-color, #495057);
 }
 .nfc-mlc-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
+  gap: 4px 10px;
   align-items: flex-start;
 }
 .nfc-mlc-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   max-width: 100%;
-  font-size: 0.75rem;
-  line-height: 1.3;
-  color: var(--body-color, #374151);
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  color: var(--text-muted, #6c757d);
 }
 .nfc-mlc-swatch {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 2px;
   flex-shrink: 0;
 }
@@ -429,87 +429,115 @@ style.textContent = `
   width: 100%;
   max-width: 100%;
   height: auto;
-  min-height: 220px;
+  max-height: 150px;
+  min-height: 0;
   display: block;
-  color: var(--body-color, #495057);
+  color: #94a3b8;
 }
 .nfc-mlc-grid {
-  stroke: currentColor;
-  stroke-opacity: 0.15;
+  stroke: #cbd5e1;
+  stroke-opacity: 0.85;
   stroke-width: 1;
-  stroke-dasharray: 4 4;
+  stroke-dasharray: 3 4;
 }
 .nfc-mlc-axis-x, .nfc-mlc-axis-y {
-  stroke: currentColor;
-  stroke-opacity: 0.35;
+  stroke: #cbd5e1;
+  stroke-opacity: 1;
   stroke-width: 1;
 }
 .nfc-mlc-crosshair {
-  stroke: currentColor;
-  stroke-opacity: 0.25;
+  stroke: #94a3b8;
+  stroke-opacity: 0.6;
   stroke-width: 1;
   pointer-events: none;
 }
 .nfc-mlc-ytick {
-  font-size: 10px;
-  fill: currentColor;
-  fill-opacity: 0.75;
+  font-size: 9px;
+  fill: #64748b;
+  fill-opacity: 1;
   pointer-events: none;
 }
 .nfc-mlc-dot {
   stroke: #fff;
 }
 .nfc-mlc-xlabel {
-  font-size: 11px;
-  fill: currentColor;
-  fill-opacity: 0.8;
+  font-size: 10px;
+  fill: #64748b;
+  fill-opacity: 1;
   font-weight: 500;
   pointer-events: none;
 }
 .nfc-mlc-unit {
-  font-size: 10px;
-  fill: currentColor;
-  fill-opacity: 0.55;
+  font-size: 9px;
+  fill: #94a3b8;
+  fill-opacity: 1;
   pointer-events: none;
 }
 .nfc-mlc-subtitle {
-  font-size: 0.72rem;
-  color: var(--text-muted, #6c757d);
-  margin: 10px 0 0 0;
-  line-height: 1.45;
+  font-size: 0.6875rem;
+  color: var(--text-muted, #868e96);
+  margin: 6px 0 0 0;
+  line-height: 1.35;
 }
 .nfc-mlc-tooltip {
   position: absolute;
   z-index: 10;
-  min-width: 180px;
-  max-width: min(360px, 92vw);
-  padding: 10px 12px;
+  min-width: 160px;
+  max-width: min(320px, 92vw);
+  padding: 8px 10px;
   border-radius: 6px;
-  font-size: 0.75rem;
-  line-height: 1.45;
+  font-size: 0.6875rem;
+  line-height: 1.4;
   pointer-events: none;
-  background: var(--nfc-mlc-tip-bg, rgba(33, 37, 41, 0.94));
-  color: var(--nfc-mlc-tip-fg, #fff);
-  box-shadow: 0 4px 16px rgba(0,0,0,.18);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--nfc-mlc-tip-bg, #fff);
+  color: var(--nfc-mlc-tip-fg, #495057);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border-color, #e9ecef);
 }
 .nfc-mlc-tip-m {
   font-weight: 600;
-  margin-bottom: 6px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255,255,255,.15);
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  color: var(--body-color, #343a40);
 }
-.nfc-mlc-tip-row { opacity: 0.95; word-break: break-word; }
+.nfc-mlc-tip-row { color: #495057; word-break: break-word; }
 
 @media (prefers-color-scheme: dark) {
   html:not([data-color-scheme="light"]) .nfc-mlc-card {
     --nfc-mlc-card-bg: var(--o-view-background-color, #1e1e1e);
-    --nfc-mlc-tip-bg: rgba(30, 30, 30, 0.96);
-    --nfc-mlc-tip-fg: #f8f9fa;
-    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+    --nfc-mlc-tip-bg: #2d3339;
+    --nfc-mlc-tip-fg: #e9ecef;
+    border-color: rgba(255,255,255,.08);
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-svg {
+    color: #64748b;
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-grid {
+    stroke: #4b5563;
+    stroke-opacity: 0.7;
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-axis-x,
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-axis-y {
+    stroke: #4b5563;
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-ytick,
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-xlabel {
+    fill: #9ca3af;
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-tooltip {
+    box-shadow: 0 4px 16px rgba(0,0,0,.35);
+    border-color: rgba(255,255,255,.12);
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-tip-m {
+    color: #f1f3f5;
+    border-bottom-color: rgba(255,255,255,.12);
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-tip-row {
+    color: #dee2e6;
   }
   html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-dot {
-    stroke: #2d2d2d;
+    stroke: #1e1e1e;
   }
 }
 `;
