@@ -21,7 +21,6 @@ def tool(fn: Callable) -> Callable:
     - Output trả về gì
     """
     name = fn.__name__
-    _TOOL_REGISTRY[name] = fn
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -36,6 +35,7 @@ def tool(fn: Callable) -> Callable:
 
     wrapper.__tool__ = True
     wrapper.__tool_name__ = name
+    _TOOL_REGISTRY[name] = wrapper  # lưu wrapper (có __tool_name__), không phải fn gốc
     return wrapper
 
 

@@ -79,24 +79,56 @@ class AgentState(TypedDict):
 
 
 def _make_langchain_tool(tool_fn, db_session):
-    """Wrap @tool function thành LangChain tool (inject db session + cache)."""
-    from langchain_core.tools import tool as lc_tool
-    cache = get_cache()
+    """
+    Wrap @tool function thành LangChain StructuredTool.
+    - Inject OdooQuery (db session) tự động — LLM không thấy param này.
+    - Expose signature gốc (bỏ param 'q') để LangChain sinh đúng JSON schema.
+    - Cache kết quả theo TTL per tool.
+    """
+    import inspect
+    from langchain_core.tools import StructuredTool
+    from pydantic import create_model
 
-    @lc_tool(tool_fn.__tool_name__)
-    def wrapped(**kwargs):
-        # Check cache trước
-        cached = cache.get(tool_fn.__tool_name__, kwargs)
+    cache     = get_cache()
+    tool_name = tool_fn.__tool_name__
+    tool_doc  = (tool_fn.__doc__ or f"Tool: {tool_name}").strip()
+
+    # Lấy signature gốc, bỏ param đầu tiên ('q')
+    sig    = inspect.signature(tool_fn)
+    params = list(sig.parameters.items())[1:]   # bỏ 'q'
+
+    # Tạo Pydantic model cho args_schema — LangChain dùng để gen JSON schema cho LLM
+    fields = {}
+    for pname, param in params:
+        annotation = param.annotation if param.annotation != inspect.Parameter.empty else str
+        if param.default != inspect.Parameter.empty:
+            fields[pname] = (annotation, param.default)
+        else:
+            fields[pname] = (annotation, ...)
+    ArgsSchema = create_model(f"{tool_name}_args", **fields)
+
+    def run_fn(**kwargs):
+        cached = cache.get(tool_name, kwargs)
         if cached is not None:
             return cached
-        q = OdooQuery(db_session)
-        result = tool_fn(q, **kwargs)
-        if result:
-            cache.set(tool_fn.__tool_name__, kwargs, result)
-        return result
+        # Mỗi tool call mở session riêng — tránh concurrent session conflict
+        from ..db.adapter import SessionLocal
+        session = SessionLocal()
+        try:
+            q      = OdooQuery(session)
+            result = tool_fn(q, **kwargs)
+            if result:
+                cache.set(tool_name, kwargs, result)
+            return result
+        finally:
+            session.close()
 
-    wrapped.__doc__ = tool_fn.__doc__
-    return wrapped
+    return StructuredTool.from_function(
+        func=run_fn,
+        name=tool_name,
+        description=tool_doc,
+        args_schema=ArgsSchema,
+    )
 
 
 class DecisionAgent:
@@ -130,9 +162,19 @@ class DecisionAgent:
                 data_points=0,
             ), None
 
-        # 3. Build LangChain tools với DB session
+        # 3. Enrich event context — resolve product_id from record if not in context
         db = SessionLocal()
         try:
+            if event.model == "purchase.order.line" and "product_id" not in event.context:
+                q = OdooQuery(db)
+                row = q.fetch_one(
+                    "SELECT product_id, order_id FROM purchase_order_line WHERE id = :rid",
+                    rid=event.record_id,
+                )
+                if row:
+                    event.context["product_id"] = row["product_id"]
+                    event.context["order_id"]   = row["order_id"]
+
             registry_tools = get_tools_for_scope(tool_names)
             lc_tools = [_make_langchain_tool(t, db) for t in registry_tools]
 
@@ -161,7 +203,7 @@ class DecisionAgent:
             graph.add_edge("tools", "llm")
             app = graph.compile()
 
-            # 5. Invoke
+            # 5. Invoke — đưa đầy đủ context (kể cả product_id đã enrich) vào HumanMessage
             user_msg = HumanMessage(content=json.dumps({
                 "event": event.model_dump(),
                 "instruction": "Phân tích dữ liệu và trả về JSON theo schema đã yêu cầu.",
