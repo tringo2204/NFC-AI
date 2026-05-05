@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_nfc_ai_price_risk_wizard" model="ir.ui.view">
+    <field name="name">nfc.ai.price.risk.wizard.form</field>
+    <field name="model">nfc.ai.price.risk.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Cảnh báo giá NFC AI">
+        <group>
+          <field name="purchase_order_id" invisible="1"/>
+          <div class="alert alert-warning w-100" role="alert">
+            <strong><i class="fa fa-exclamation-triangle"/> Cảnh báo giá</strong>
+            <field name="risk_message" nolabel="1" readonly="1" class="mt-2"/>
+          </div>
+        </group>
+        <footer>
+          <button name="action_confirm_anyway" type="object" string="Vẫn xác nhận đơn" class="btn-primary"/>
+          <button name="action_cancel" type="object" string="Quay lại chỉnh sửa" class="btn-secondary"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+</odoo>

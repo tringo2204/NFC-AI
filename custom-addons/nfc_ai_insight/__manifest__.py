@@ -7,6 +7,7 @@
     'depends': ['purchase', 'web', 'nfc_purchase_request'],
     'data': [
         'security/ir.model.access.csv',
+        'wizard/nfc_ai_price_risk_wizard_views.xml',
         'views/purchase_order_views.xml',
         'views/purchase_request_views.xml',
     ],

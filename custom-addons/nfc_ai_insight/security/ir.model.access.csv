@@ -1,1 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_nfc_ai_price_risk_wizard_purchase,nfc.ai.price.risk.wizard purchase,model_nfc_ai_price_risk_wizard,purchase.group_purchase_user,1,1,1,1
