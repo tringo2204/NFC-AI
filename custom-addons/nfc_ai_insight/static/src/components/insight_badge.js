@@ -27,7 +27,8 @@ class InsightPanel extends Component {
         if (num == null) return "";
         return Math.round(num).toLocaleString("vi-VN");
     }
-    async feedback(action) {
+    // Arrow function — giữ đúng `this` khi gọi từ OWL template
+    feedback = async (action) => {
         this.props.onFeedback?.(action);
         this.props.close();
     }
@@ -48,7 +49,7 @@ class InsightBadge extends Component {
         this.popover  = usePopover(InsightPanel, { position: "bottom-start", closeOnClickAway: true });
     }
 
-    openPanel() {
+    openPanel = () => {
         if (!this.props.decision) return;
         this.popover.open(this.badgeRef.el, {
             decision:   this.props.decision,
