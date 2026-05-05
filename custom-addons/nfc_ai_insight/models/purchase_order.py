@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 """Tóm tắt một cửa cho BGĐ: thống kê giá nội bộ + lịch sử riêng NCC trên RFQ/PO."""
+import json
+from collections import defaultdict
+
 from odoo import api, fields, models
 from odoo.tools import html_escape
 
@@ -23,6 +26,17 @@ class PurchaseOrder(models.Model):
         string="Tóm tắt BGĐ (giá nội bộ)",
         compute="_compute_nfc_executive_summary_html",
         sanitize=False,
+        store=False,
+    )
+    nfc_passive_rfq_banner_html = fields.Html(
+        string="NFC — Insight passive (RFQ)",
+        compute="_compute_nfc_passive_rfq_banner_html",
+        sanitize=False,
+        store=False,
+    )
+    nfc_price_multiline_json = fields.Text(
+        string="NFC — Biểu đồ giá theo tháng (JSON)",
+        compute="_compute_nfc_price_multiline_json",
         store=False,
     )
 
@@ -67,6 +81,206 @@ class PurchaseOrder(models.Model):
     @staticmethod
     def _nfc_fmt_vnd(val):
         return f"{round(val):,}".replace(",", ".")
+
+    def _nfc_primary_po_line(self):
+        lines = self.order_line.filtered(lambda l: l.product_id and l.price_unit)
+        if not lines:
+            return self.order_line.browse()
+        return max(
+            lines,
+            key=lambda l: (l.product_qty or 0.0) * (l.price_unit or 0.0),
+        )
+
+    def _nfc_build_monthly_supplier_series(self, product_id, months, exclude_po_id, max_suppliers):
+        self.env.cr.execute(
+            """
+            WITH sup_tot AS (
+                SELECT rp.name AS supplier, COUNT(pol.id)::int AS n
+                FROM purchase_order_line pol
+                JOIN purchase_order po ON po.id = pol.order_id
+                JOIN res_partner rp ON rp.id = po.partner_id
+                WHERE pol.product_id = %s
+                  AND po.state IN ('purchase', 'done')
+                  AND po.date_order >= CURRENT_DATE - make_interval(months => %s)
+                  AND (%s IS NULL OR po.id <> %s)
+                GROUP BY rp.name
+                ORDER BY n DESC
+                LIMIT %s
+            ),
+            per_cell AS (
+                SELECT
+                    to_char(date_trunc('month', po.date_order::timestamp), 'YYYY-MM') AS ym,
+                    rp.name AS supplier,
+                    AVG(pol.price_unit)::float AS avg_pu
+                FROM purchase_order_line pol
+                JOIN purchase_order po ON po.id = pol.order_id
+                JOIN res_partner rp ON rp.id = po.partner_id
+                WHERE pol.product_id = %s
+                  AND po.state IN ('purchase', 'done')
+                  AND po.date_order >= CURRENT_DATE - make_interval(months => %s)
+                  AND (%s IS NULL OR po.id <> %s)
+                  AND rp.name IN (SELECT supplier FROM sup_tot)
+                GROUP BY 1, 2
+            )
+            SELECT ym, supplier, avg_pu FROM per_cell
+            ORDER BY ym, supplier
+            """,
+            (
+                product_id,
+                months,
+                exclude_po_id,
+                exclude_po_id,
+                max_suppliers,
+                product_id,
+                months,
+                exclude_po_id,
+                exclude_po_id,
+            ),
+        )
+        rows = self.env.cr.fetchall()
+        if not rows:
+            return None
+        months_order = sorted({r[0] for r in rows})
+        suppliers = []
+        for r in rows:
+            if r[1] not in suppliers:
+                suppliers.append(r[1])
+        by_sup = defaultdict(dict)
+        for ym, sup, avg in rows:
+            by_sup[sup][ym] = avg
+        series = []
+        for sup in suppliers:
+            data = [by_sup[sup].get(m) for m in months_order]
+            if any(v is not None for v in data):
+                series.append({"name": sup, "data": data})
+        good_lines = sum(
+            1 for s in series if sum(1 for v in s["data"] if v is not None) >= 2
+        )
+        if len(months_order) < 2 and good_lines == 0:
+            return None
+        product = self.env["product.product"].browse(product_id)
+        return {
+            "title": f"Giá TB theo tháng — {product.display_name}",
+            "subtitle": (
+                f"{months} tháng — tối đa {max_suppliers} NCC tích cực nhất (dữ liệu nội bộ)."
+            ),
+            "categories": months_order,
+            "series": series,
+        }
+
+    @api.depends(
+        "order_line",
+        "order_line.product_id",
+        "order_line.product_qty",
+        "order_line.price_unit",
+        "partner_id",
+        "state",
+    )
+    def _compute_nfc_passive_rfq_banner_html(self):
+        months = 12
+        for order in self:
+            order.nfc_passive_rfq_banner_html = False
+            if order.state not in ("draft", "sent"):
+                continue
+            primary = order._nfc_primary_po_line()
+            if not primary:
+                continue
+            ex = order.id if isinstance(order.id, int) else None
+            pu = primary.price_unit or 0.0
+            pname = html_escape(primary.product_id.display_name)
+            c, mn, _mx, av = order._nfc_price_stats_for_product(
+                primary.product_id.id, months, partner_id=None, exclude_po_id=ex
+            )
+            vname = html_escape(order.partner_id.display_name) if order.partner_id else "—"
+            dev_txt = "—"
+            dev_cls = "text-muted"
+            if c >= 3 and av > 0 and pu:
+                d = (pu - av) / av * 100.0
+                dev_txt = f"{d:+.1f}%"
+                if d > 5:
+                    dev_cls = "text-danger"
+                elif d < -5:
+                    dev_cls = "text-success"
+                else:
+                    dev_cls = "text-body"
+            best = order._nfc_fmt_vnd(mn) if c else "—"
+            avg_s = order._nfc_fmt_vnd(av) if c else "—"
+            prop_s = order._nfc_fmt_vnd(pu) if pu else "—"
+            if c < 3:
+                callout = (
+                    f"Chưa đủ lịch sử mua nội bộ (&lt;3 giao dịch trong {months} tháng) "
+                    f"cho <strong>{pname}</strong>."
+                )
+            else:
+                callout = (
+                    f"<strong>{pname}</strong> — Đơn giá RFQ: <strong>{prop_s} đ</strong> "
+                    f"(NCC: {vname}). TB nội bộ: <strong>{avg_s} đ</strong>, "
+                    f"thấp nhất ghi nhận: <strong>{best} đ</strong>. "
+                )
+                if pu and av > 0:
+                    if pu > av * 1.05:
+                        callout += (
+                            " Giá đang cao hơn TB — xem tab <em>Tóm tắt BGĐ</em> "
+                            "và biểu đồ so sánh NCC."
+                        )
+                    elif pu < av * 0.95:
+                        callout += " Giá đang tốt hơn TB nội bộ."
+            order.nfc_passive_rfq_banner_html = f"""
+<div class="nfc-passive-banner border rounded p-3 mb-2 bg-view">
+  <div class="row g-2 text-center small">
+    <div class="col-6 col-md-3">
+      <div class="p-2 border rounded bg-view">
+        <div class="text-muted">Đơn giá (dòng chính)</div>
+        <strong>{prop_s} đ</strong>
+        <div class="text-muted text-truncate" title="{pname}">{pname}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="p-2 border rounded bg-view">
+        <div class="text-muted">So với TB 12 tháng</div>
+        <strong class="{dev_cls}">{dev_txt}</strong>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="p-2 border rounded bg-view">
+        <div class="text-muted">TB nội bộ</div>
+        <strong>{avg_s} đ</strong>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="p-2 border rounded bg-view">
+        <div class="text-muted">Thấp nhất ghi nhận</div>
+        <strong>{best} đ</strong>
+      </div>
+    </div>
+  </div>
+  <div class="alert alert-warning mt-3 mb-0 py-2 small">{callout}</div>
+</div>"""
+
+    @api.depends(
+        "order_line",
+        "order_line.product_id",
+        "order_line.product_qty",
+        "order_line.price_unit",
+        "partner_id",
+        "state",
+    )
+    def _compute_nfc_price_multiline_json(self):
+        chart_months = 6
+        max_sup = 4
+        for order in self:
+            order.nfc_price_multiline_json = False
+            if order.state not in ("draft", "sent", "purchase", "done"):
+                continue
+            primary = order._nfc_primary_po_line()
+            if not primary:
+                continue
+            ex = order.id if isinstance(order.id, int) else None
+            payload = order._nfc_build_monthly_supplier_series(
+                primary.product_id.id, chart_months, ex, max_sup
+            )
+            if payload:
+                order.nfc_price_multiline_json = json.dumps(payload, ensure_ascii=False)
 
     @api.depends(
         "order_line",

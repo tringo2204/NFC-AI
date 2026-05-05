@@ -13,6 +13,21 @@
     </field>
   </record>
 
+  <!-- A: Passive insight — 4 ô + callout khi RFQ nháp / đã gửi -->
+  <record id="view_purchase_order_form_passive_rfq_banner" model="ir.ui.view">
+    <field name="name">purchase.order.form.nfc.passive.rfq</field>
+    <field name="model">purchase.order</field>
+    <field name="inherit_id" ref="purchase.purchase_order_form"/>
+    <field name="priority">25</field>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='order_line']" position="before">
+        <group invisible="state not in ('draft', 'sent')" colspan="2">
+          <field name="nfc_passive_rfq_banner_html" colspan="2" nolabel="1" readonly="1"/>
+        </group>
+      </xpath>
+    </field>
+  </record>
+
   <!-- Tóm tắt một cửa cho BGĐ (bảng giá nội bộ + cùng NCC) -->
   <record id="view_purchase_order_form_executive_summary" model="ir.ui.view">
     <field name="name">purchase.order.form.nfc.executive.summary</field>
@@ -22,6 +37,10 @@
     <field name="arch" type="xml">
       <xpath expr="//notebook" position="inside">
         <page string="Tóm tắt BGĐ" name="nfc_executive_summary" sequence="5">
+          <group string="Biểu đồ giá TB theo tháng (so các NCC)" colspan="2">
+            <field name="nfc_price_multiline_json" widget="nfc_multiline_chart" colspan="2" nolabel="1" readonly="1"/>
+          </group>
+          <separator string="Bảng chi tiết theo dòng"/>
           <field name="nfc_executive_summary_html" colspan="2" nolabel="1" readonly="1"/>
         </page>
       </xpath>
