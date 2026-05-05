@@ -103,7 +103,7 @@
         loading="state.loading"
         decision="state.decision"
         logId="state.logId"
-        onFeedback="(action) => onFeedback(action)"
+        onFeedback="onFeedback"
       />
     </div>
   </t>

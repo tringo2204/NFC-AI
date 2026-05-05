@@ -106,7 +106,7 @@ export class NfcAiInsightField extends Component {
         );
     }
 
-    async onFeedback(action) {
+    onFeedback = async (action) => {
         await this.aiService.sendFeedback(this.state.logId, action);
         this.state.decision = null;
     }
