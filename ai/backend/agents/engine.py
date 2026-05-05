@@ -18,11 +18,15 @@ from langchain_anthropic import ChatAnthropic
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 
+import time
+
 from ..db.adapter import OdooQuery, SessionLocal
 from ..events.aggregator import EventAggregator
 from ..events.router import DomainRouter
 from ..tools.registry import get_tools_for_scope
 from ..schemas.decision import ERPEvent, DecisionOutput
+from ..cache.layer import get_cache
+from ..logger.decision_logger import get_logger, DecisionLogInput
 
 # Ensure purchase tools are registered
 import ai.backend.tools.purchase  # noqa: F401
@@ -75,13 +79,21 @@ class AgentState(TypedDict):
 
 
 def _make_langchain_tool(tool_fn, db_session):
-    """Wrap @tool function thành LangChain tool (inject db session)."""
+    """Wrap @tool function thành LangChain tool (inject db session + cache)."""
     from langchain_core.tools import tool as lc_tool
+    cache = get_cache()
 
     @lc_tool(tool_fn.__tool_name__)
     def wrapped(**kwargs):
+        # Check cache trước
+        cached = cache.get(tool_fn.__tool_name__, kwargs)
+        if cached is not None:
+            return cached
         q = OdooQuery(db_session)
-        return tool_fn(q, **kwargs)
+        result = tool_fn(q, **kwargs)
+        if result:
+            cache.set(tool_fn.__tool_name__, kwargs, result)
+        return result
 
     wrapped.__doc__ = tool_fn.__doc__
     return wrapped
@@ -92,16 +104,20 @@ class DecisionAgent:
         self.aggregator = EventAggregator()
         self.router = DomainRouter()
 
-    def run(self, event: ERPEvent) -> DecisionOutput:
+    def run(self, event: ERPEvent) -> tuple[DecisionOutput, int | None]:
+        start_ms = int(time.time() * 1000)
+        decision_logger = get_logger()
+
         # 1. Resolve semantic event
         event = self.aggregator.resolve(event)
         if event.event_type == "unknown":
-            return DecisionOutput(
+            result = DecisionOutput(
                 level="no_data",
                 message="Sự kiện này chưa được cấu hình phân tích.",
                 confidence="low",
                 data_points=0,
             )
+            return result, None
 
         # 2. Get scoped tools
         tool_names = self.router.get_tools(event.model, event.event_type)
@@ -112,7 +128,7 @@ class DecisionAgent:
                 message="Không có tools nào được cấu hình cho sự kiện này.",
                 confidence="low",
                 data_points=0,
-            )
+            ), None
 
         # 3. Build LangChain tools với DB session
         db = SessionLocal()
@@ -162,13 +178,32 @@ class DecisionAgent:
             last_msg = result["messages"][-1]
             content = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
 
-            # Extract JSON từ response
             import re
             json_match = re.search(r'\{[\s\S]*\}', content)
             if json_match:
                 data = json.loads(json_match.group())
                 data.setdefault("tools_used", tool_names)
-                return DecisionOutput(**data)
+                output = DecisionOutput(**data)
+                latency = int(time.time() * 1000) - start_ms
+                log_id = decision_logger.log_insight(DecisionLogInput(
+                    odoo_model=event.model,
+                    record_id=event.record_id,
+                    field_name=event.field,
+                    field_value=str(event.value),
+                    event_type=event.event_type,
+                    company_id=event.context.get("company_id", 1),
+                    user_id=event.context.get("user_id", 0),
+                    ai_level=output.level,
+                    ai_deviation=output.deviation_pct,
+                    ai_message=output.message,
+                    ai_suggestion=output.suggestion,
+                    ai_confidence=output.confidence,
+                    ai_data_points=output.data_points,
+                    ai_tools_used=output.tools_used,
+                    ai_cached=output.cached,
+                    ai_latency_ms=latency,
+                ))
+                return output, log_id
 
         except Exception as e:
             return DecisionOutput(
@@ -176,7 +211,7 @@ class DecisionAgent:
                 message=f"Lỗi phân tích: {str(e)[:80]}",
                 confidence="low",
                 data_points=0,
-            )
+            ), None
         finally:
             db.close()
 
@@ -185,4 +220,4 @@ class DecisionAgent:
             message="Không thể parse kết quả từ AI.",
             confidence="low",
             data_points=0,
-        )
+        ), None

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- Inject InsightBadge vào form purchase.order — field price_unit trong order lines -->
+  <record id="view_purchase_order_form_ai" model="ir.ui.view">
+    <field name="name">purchase.order.form.nfc.ai</field>
+    <field name="model">purchase.order.line</field>
+    <field name="inherit_id" ref="purchase.purchase_order_line_form2"/>
+    <field name="arch" type="xml">
+      <!-- Thêm AI badge ngay sau field price_unit trong form order line -->
+      <xpath expr="//field[@name='price_unit']" position="after">
+        <field name="price_unit"
+               widget="nfc_ai_insight"
+               ai_model="purchase.order.line"
+               ai_field="price_unit"
+               string="AI Insight"
+               readonly="1"
+               optional="show"/>
+      </xpath>
+    </field>
+  </record>
+
+  <!-- Inject InsightBadge vào list view của order lines (inline trong PO form) -->
+  <record id="view_purchase_order_line_list_ai" model="ir.ui.view">
+    <field name="name">purchase.order.line.list.nfc.ai</field>
+    <field name="model">purchase.order.line</field>
+    <field name="inherit_id" ref="purchase.purchase_order_line_tree"/>
+    <field name="arch" type="xml">
+      <xpath expr="//field[@name='price_unit']" position="after">
+        <field name="price_unit"
+               widget="nfc_ai_insight"
+               string="AI"
+               readonly="1"
+               optional="show"
+               column_invisible="True"/>
+      </xpath>
+    </field>
+  </record>
+
+</odoo>

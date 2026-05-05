@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+  <!-- ── InsightBadge: badge nhỏ hiện ngay bên cạnh field ── -->
+  <t t-name="nfc_ai_insight.InsightBadge">
+    <div class="nfc-ai-badge-wrap" t-if="state.visible">
+
+      <!-- Loading spinner -->
+      <span t-if="state.loading" class="nfc-ai-badge nfc-ai-badge--loading">
+        <i class="fa fa-spinner fa-spin"/> AI...
+      </span>
+
+      <!-- Result badge -->
+      <span t-elif="state.decision"
+            t-attf-class="nfc-ai-badge nfc-ai-badge--{{ state.decision.level }}"
+            t-on-click="togglePanel"
+            t-att-title="state.decision.message">
+        <i t-attf-class="fa {{ levelIcon(state.decision.level) }}"/>
+        <t t-esc="levelLabel(state.decision.level)"/>
+        <t t-if="state.decision.deviation_pct">
+          <span class="nfc-ai-deviation">
+            <t t-esc="formatDeviation(state.decision.deviation_pct)"/>
+          </span>
+        </t>
+      </span>
+
+      <!-- Detail panel (toggle) -->
+      <div t-if="state.panelOpen and state.decision" class="nfc-ai-panel">
+        <div class="nfc-ai-panel__header">
+          <span class="nfc-ai-panel__title">NFC AI Insight</span>
+          <i class="fa fa-times nfc-ai-panel__close" t-on-click="togglePanel"/>
+        </div>
+        <div class="nfc-ai-panel__body">
+          <p class="nfc-ai-panel__message">
+            <t t-esc="state.decision.message"/>
+          </p>
+          <p t-if="state.decision.suggestion" class="nfc-ai-panel__suggestion">
+            <i class="fa fa-lightbulb-o"/> <t t-esc="state.decision.suggestion"/>
+          </p>
+          <div class="nfc-ai-panel__meta">
+            <span>Dữ liệu: <b><t t-esc="state.decision.data_points"/> giao dịch</b></span>
+            <span>Độ tin cậy: <b><t t-esc="confidenceLabel(state.decision.confidence)"/></b></span>
+            <span t-if="state.decision.cached" class="nfc-ai-cache-badge">⚡ Cache</span>
+          </div>
+        </div>
+        <div class="nfc-ai-panel__actions" t-if="state.logId">
+          <button class="btn btn-sm btn-success" t-on-click="() => sendFeedback('accepted')">
+            Chấp nhận
+          </button>
+          <button class="btn btn-sm btn-secondary" t-on-click="() => sendFeedback('ignored')">
+            Bỏ qua
+          </button>
+          <button class="btn btn-sm btn-warning" t-on-click="() => sendFeedback('overridden')">
+            Ghi đè
+          </button>
+        </div>
+      </div>
+    </div>
+  </t>
+
+</templates>
