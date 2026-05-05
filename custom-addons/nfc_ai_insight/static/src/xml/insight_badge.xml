@@ -1,114 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-  <!-- ── Badge nhỏ + Panel chi tiết ───────────────────────────────── -->
-  <t t-name="nfc_ai_insight.AiBadge">
-    <div class="nfc-ai-wrap-relative d-inline-block">
+  <!-- ── Popover Panel content (Odoo Popover system render ngoài table) ── -->
+  <t t-name="nfc_ai_insight.InsightPanel">
+    <div class="nfc-ai-panel-wrap">
+      <div class="nfc-ai-panel-header">
+        <span><i class="fa fa-robot me-1"/>NFC AI Insight</span>
+      </div>
+      <div class="nfc-ai-panel-body">
 
-      <!-- Spinner -->
-      <button t-if="props.loading" class="nfc-ai-badge nfc-ai-badge--loading" disabled="disabled">
-        <i class="fa fa-spinner fa-spin fa-fw"/> AI
-      </button>
+        <p class="nfc-ai-msg"><t t-esc="props.decision.message"/></p>
+        <p t-if="props.decision.suggestion" class="nfc-ai-sugg">
+          <i class="fa fa-lightbulb-o me-1"/>
+          <t t-esc="props.decision.suggestion"/>
+        </p>
 
-      <!-- Badge kết quả -->
-      <button t-elif="props.decision"
-              t-attf-class="nfc-ai-badge nfc-ai-badge--{{ props.decision.level }}"
-              t-on-click.stop="toggle"
-              t-att-title="props.decision.message">
-        <i t-attf-class="fa {{ levelIcon(props.decision.level) }} fa-fw"/>
-        <span t-esc="levelLabel(props.decision.level)"/>
-        <span t-if="props.decision.deviation_pct" class="nfc-ai-deviation">
-          (<t t-esc="formatDev(props.decision.deviation_pct)"/>)
-        </span>
-      </button>
-
-      <!-- Panel chi tiết -->
-      <div t-if="state.open and props.decision" class="nfc-ai-panel">
-        <div class="nfc-ai-panel-header">
-          <span><i class="fa fa-robot me-1"/>NFC AI Insight</span>
-          <i class="fa fa-times" style="cursor:pointer" t-on-click.stop="toggle"/>
-        </div>
-        <div class="nfc-ai-panel-body">
-
-          <!-- Message chính -->
-          <p class="nfc-ai-msg"><t t-esc="props.decision.message"/></p>
-
-          <!-- Suggestion -->
-          <p t-if="props.decision.suggestion" class="nfc-ai-sugg">
-            <i class="fa fa-lightbulb-o me-1"/>
-            <t t-esc="props.decision.suggestion"/>
-          </p>
-
-          <!-- Price context: stats grid -->
-          <t t-if="props.decision.price_context">
-            <div class="nfc-ai-stats-grid">
-              <div t-if="props.decision.price_context.avg_price" class="nfc-ai-stat">
-                <span class="nfc-ai-stat-label">TB 6T</span>
-                <span class="nfc-ai-stat-value"><t t-esc="fmt(props.decision.price_context.avg_price)"/>đ</span>
-              </div>
-              <div t-if="props.decision.price_context.min_price" class="nfc-ai-stat">
-                <span class="nfc-ai-stat-label">Thấp nhất</span>
-                <span class="nfc-ai-stat-value" style="color:#198754"><t t-esc="fmt(props.decision.price_context.min_price)"/>đ</span>
-              </div>
-              <div t-if="props.decision.price_context.max_price" class="nfc-ai-stat">
-                <span class="nfc-ai-stat-label">Cao nhất</span>
-                <span class="nfc-ai-stat-value" style="color:#dc3545"><t t-esc="fmt(props.decision.price_context.max_price)"/>đ</span>
-              </div>
-              <div t-if="props.decision.price_context.suggested_price" class="nfc-ai-stat nfc-ai-stat--highlight">
-                <span class="nfc-ai-stat-label">Đề xuất</span>
-                <span class="nfc-ai-stat-value"><t t-esc="fmt(props.decision.price_context.suggested_price)"/>đ</span>
-              </div>
+        <!-- Stats grid -->
+        <t t-if="props.decision.price_context">
+          <div class="nfc-ai-stats-grid">
+            <div t-if="props.decision.price_context.avg_price" class="nfc-ai-stat">
+              <span class="nfc-ai-stat-label">TB 6T</span>
+              <span class="nfc-ai-stat-value"><t t-esc="fmt(props.decision.price_context.avg_price)"/>đ</span>
             </div>
-
-            <!-- Best supplier -->
-            <div t-if="props.decision.price_context.best_supplier" class="nfc-ai-best-supplier">
-              <i class="fa fa-trophy me-1" style="color:#f59e0b"/>
-              NCC tốt nhất: <b><t t-esc="props.decision.price_context.best_supplier"/></b>
-              <span t-if="props.decision.price_context.best_supplier_price">
-                — <t t-esc="fmt(props.decision.price_context.best_supplier_price)"/>đ
-              </span>
+            <div t-if="props.decision.price_context.min_price" class="nfc-ai-stat">
+              <span class="nfc-ai-stat-label">Thấp nhất</span>
+              <span class="nfc-ai-stat-value" style="color:#198754"><t t-esc="fmt(props.decision.price_context.min_price)"/>đ</span>
             </div>
-
-            <!-- Lịch sử 3 giao dịch gần nhất -->
-            <t t-if="props.decision.price_context.recent_history and props.decision.price_context.recent_history.length">
-              <div class="nfc-ai-history-title">Lịch sử mua gần nhất</div>
-              <table class="nfc-ai-history-table">
-                <tr t-foreach="props.decision.price_context.recent_history" t-as="row" t-key="row_index">
-                  <td class="nfc-ai-history-date"><t t-esc="row.date"/></td>
-                  <td class="nfc-ai-history-supplier"><t t-esc="row.supplier"/></td>
-                  <td class="nfc-ai-history-price"><b><t t-esc="fmt(row.price)"/>đ</b></td>
-                </tr>
-              </table>
-            </t>
-          </t>
-
-          <!-- Meta -->
-          <div class="nfc-ai-meta">
-            <span><b><t t-esc="props.decision.data_points"/> giao dịch</b></span>
-            <span>Tin cậy: <b><t t-esc="confidenceLabel(props.decision.confidence)"/></b></span>
-            <span t-if="props.decision.cached" style="color:#0d6efd">⚡ Cache</span>
+            <div t-if="props.decision.price_context.max_price" class="nfc-ai-stat">
+              <span class="nfc-ai-stat-label">Cao nhất</span>
+              <span class="nfc-ai-stat-value" style="color:#dc3545"><t t-esc="fmt(props.decision.price_context.max_price)"/>đ</span>
+            </div>
+            <div t-if="props.decision.price_context.suggested_price" class="nfc-ai-stat nfc-ai-stat--highlight">
+              <span class="nfc-ai-stat-label">Đề xuất</span>
+              <span class="nfc-ai-stat-value"><t t-esc="fmt(props.decision.price_context.suggested_price)"/>đ</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Feedback buttons -->
-        <div t-if="props.logId" class="nfc-ai-panel-footer">
-          <button class="btn btn-sm btn-outline-success"   t-on-click.stop="() => props.onFeedback('accepted')">✓ Chấp nhận</button>
-          <button class="btn btn-sm btn-outline-secondary" t-on-click.stop="() => props.onFeedback('ignored')">Bỏ qua</button>
-          <button class="btn btn-sm btn-outline-warning"   t-on-click.stop="() => props.onFeedback('overridden')">Ghi đè</button>
+          <!-- Best supplier -->
+          <div t-if="props.decision.price_context.best_supplier" class="nfc-ai-best-supplier">
+            <i class="fa fa-trophy me-1" style="color:#f59e0b"/>
+            NCC tốt nhất: <b><t t-esc="props.decision.price_context.best_supplier"/></b>
+            <t t-if="props.decision.price_context.best_supplier_price">
+              — <t t-esc="fmt(props.decision.price_context.best_supplier_price)"/>đ
+            </t>
+          </div>
+
+          <!-- History table -->
+          <t t-if="props.decision.price_context.recent_history and props.decision.price_context.recent_history.length">
+            <div class="nfc-ai-history-title">Lịch sử mua gần nhất</div>
+            <table class="nfc-ai-history-table">
+              <tr t-foreach="props.decision.price_context.recent_history" t-as="row" t-key="row_index">
+                <td class="nfc-ai-history-date"><t t-esc="row.date"/></td>
+                <td class="nfc-ai-history-supplier"><t t-esc="row.supplier"/></td>
+                <td class="nfc-ai-history-price"><b><t t-esc="fmt(row.price)"/>đ</b></td>
+              </tr>
+            </table>
+          </t>
+        </t>
+
+        <!-- Meta -->
+        <div class="nfc-ai-meta">
+          <span><b><t t-esc="props.decision.data_points"/> giao dịch</b></span>
+          <span>Tin cậy: <b><t t-esc="confidenceLabel(props.decision.confidence)"/></b></span>
+          <span t-if="props.decision.cached" style="color:#0d6efd">⚡ Cache</span>
         </div>
+      </div>
+
+      <!-- Feedback -->
+      <div t-if="props.logId" class="nfc-ai-panel-footer">
+        <button class="btn btn-sm btn-outline-success"   t-on-click="() => feedback('accepted')">✓ Chấp nhận</button>
+        <button class="btn btn-sm btn-outline-secondary" t-on-click="() => feedback('ignored')">Bỏ qua</button>
+        <button class="btn btn-sm btn-outline-warning"   t-on-click="() => feedback('overridden')">Ghi đè</button>
       </div>
     </div>
   </t>
 
-  <!-- ── InsightField: price_unit gốc + AiBadge bên cạnh ──────────── -->
+  <!-- ── Badge nhỏ (click → mở Popover) ──────────────────────────────── -->
+  <t t-name="nfc_ai_insight.InsightBadge">
+    <span>
+      <button t-if="props.loading" class="nfc-ai-badge nfc-ai-badge--loading" disabled="disabled">
+        <i class="fa fa-spinner fa-spin fa-fw"/> AI
+      </button>
+      <button t-elif="props.decision"
+              t-ref="badge"
+              t-attf-class="nfc-ai-badge nfc-ai-badge--{{ props.decision.level }}"
+              t-on-click.stop="openPanel">
+        <i t-attf-class="fa {{ levelIcon(props.decision.level) }} fa-fw"/>
+        <t t-esc="levelLabel(props.decision.level)"/>
+        <span t-if="props.decision.deviation_pct" class="nfc-ai-deviation">
+          (<t t-esc="formatDev(props.decision.deviation_pct)"/>)
+        </span>
+      </button>
+    </span>
+  </t>
+
+  <!-- ── Field wrapper: field gốc + badge cạnh nhau ───────────────────── -->
   <t t-name="nfc_ai_insight.InsightField">
     <div class="nfc-ai-field-wrap">
-      <!-- Render field gốc (monetary hoặc float) -->
       <MonetaryField t-if="isMonetary" t-props="props"/>
       <FloatField    t-else="1"        t-props="props"/>
-
-      <!-- AI Badge -->
-      <AiBadge
+      <InsightBadge
         loading="state.loading"
         decision="state.decision"
         logId="state.logId"
