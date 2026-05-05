@@ -7,12 +7,29 @@ from odoo.tools import html_escape
 class PurchaseOrder(models.Model):
     _inherit = "purchase.order"
 
+    # Tương thích DB/view còn sót sau khi gỡ tính năng cảnh báo giá + wizard (không dùng logic).
+    nfc_ai_price_risk = fields.Boolean(
+        string="(legacy) Cảnh báo giá NFC",
+        compute="_compute_nfc_ai_price_risk_legacy",
+        store=False,
+    )
+    nfc_ai_price_risk_message = fields.Text(
+        string="(legacy) Chi tiết cảnh báo",
+        compute="_compute_nfc_ai_price_risk_legacy",
+        store=False,
+    )
+
     nfc_executive_summary_html = fields.Html(
         string="Tóm tắt BGĐ (giá nội bộ)",
         compute="_compute_nfc_executive_summary_html",
         sanitize=False,
         store=False,
     )
+
+    def _compute_nfc_ai_price_risk_legacy(self):
+        for order in self:
+            order.nfc_ai_price_risk = False
+            order.nfc_ai_price_risk_message = False
 
     def _nfc_price_stats_for_product(
         self, product_id, months, partner_id=None, exclude_po_id=None
