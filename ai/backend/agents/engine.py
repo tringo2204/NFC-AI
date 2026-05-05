@@ -28,8 +28,8 @@ from ..schemas.decision import ERPEvent, DecisionOutput
 from ..cache.layer import get_cache
 from ..logger.decision_logger import get_logger, DecisionLogInput
 
-# Ensure purchase tools are registered
-import ai.backend.tools.purchase  # noqa: F401
+# Ensure purchase tools are registered (relative import — works anywhere)
+from .. import tools  # noqa: F401
 
 SYSTEM_PROMPT = """Bạn là AI Assistant của NFC ERP — chuyên gia phân tích dữ liệu mua hàng.
 
