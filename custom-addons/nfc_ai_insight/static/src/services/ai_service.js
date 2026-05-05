@@ -6,7 +6,10 @@
 import { registry } from "@web/core/registry";
 import { session } from "@web/session";
 
-const AI_API_URL = session.nfc_ai_url || "http://localhost:8100";
+// Dùng cùng hostname với Odoo server, port 8100
+// → tự hoạt động trên cả local lẫn production
+const AI_API_URL = session.nfc_ai_url ||
+    `${window.location.protocol}//${window.location.hostname}:8100`;
 const DEBOUNCE_MS = 600;
 
 class AiInsightService {
