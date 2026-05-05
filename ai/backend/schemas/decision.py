@@ -9,12 +9,31 @@ class Action(BaseModel):
     value: str = ""
 
 
+class PriceRecord(BaseModel):
+    """1 dòng lịch sử giá — hiện trong bảng mini panel."""
+    date:     str
+    price:    float
+    supplier: str
+    qty:      float = 0
+
+
+class PriceContext(BaseModel):
+    """Dữ liệu giá structured — panel render trực tiếp, không parse text."""
+    avg_price:        Optional[float] = None   # TB 6 tháng
+    min_price:        Optional[float] = None   # Thấp nhất
+    max_price:        Optional[float] = None   # Cao nhất
+    suggested_price:  Optional[float] = None   # Giá đề xuất thương lượng
+    best_supplier:    Optional[str]   = None   # NCC giá tốt nhất
+    best_supplier_price: Optional[float] = None
+    recent_history:   list[PriceRecord] = []   # 3 giao dịch gần nhất
+
+
 class DecisionOutput(BaseModel):
     level: Literal["good", "normal", "high", "critical", "no_data"]
     deviation_pct: Optional[float] = None
     message: str = Field(..., max_length=200)
     suggestion: Optional[str] = None
-    # LLM có thể trả actions là list[dict] hoặc list[str] — normalize về list[Action]
+    price_context: Optional[PriceContext] = None   # ← dữ liệu structured mới
     actions: list[Action] = []
     confidence: Literal["high", "medium", "low"]
     data_points: int
@@ -23,18 +42,19 @@ class DecisionOutput(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def normalize_actions(cls, data: Any) -> Any:
-        """LLM đôi khi trả actions là list[str] — normalize về list[dict]."""
-        if isinstance(data, dict) and "actions" in data:
-            normalized = []
-            for a in (data["actions"] or []):
-                if isinstance(a, str):
-                    normalized.append({"label": a, "type": "button", "value": ""})
-                elif isinstance(a, dict):
-                    a.setdefault("type", "button")
-                    a.setdefault("value", "")
-                    normalized.append(a)
-            data["actions"] = normalized
+    def normalize_fields(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        # Normalize actions list[str] → list[dict]
+        normalized = []
+        for a in (data.get("actions") or []):
+            if isinstance(a, str):
+                normalized.append({"label": a, "type": "button", "value": ""})
+            elif isinstance(a, dict):
+                a.setdefault("type", "button")
+                a.setdefault("value", "")
+                normalized.append(a)
+        data["actions"] = normalized
         return data
 
 

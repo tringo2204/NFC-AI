@@ -52,6 +52,10 @@ class AiBadge extends Component {
         if (pct == null) return "";
         return (pct > 0 ? "+" : "") + Math.round(pct) + "%";
     }
+    fmt(num) {
+        if (num == null) return "";
+        return Math.round(num).toLocaleString("vi-VN");
+    }
 }
 
 // ── Main field widget: wraps MonetaryField + thêm AiBadge ─────────────────
@@ -172,5 +176,33 @@ style.textContent = `
   border-top:1px solid #dee2e6; background:#f8f9fa; border-radius:0 0 8px 8px;
 }
 .nfc-ai-wrap-relative { position: relative; display:inline-block; }
+
+/* Stats grid */
+.nfc-ai-stats-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 6px; margin: 8px 0;
+}
+.nfc-ai-stat {
+  text-align:center; padding: 4px 6px;
+  background:#f8f9fa; border-radius:6px; border:1px solid #e9ecef;
+}
+.nfc-ai-stat--highlight { background:#fff3cd; border-color:#ffc107; }
+.nfc-ai-stat-label { display:block; font-size:10px; color:#6c757d; }
+.nfc-ai-stat-value { display:block; font-size:12px; font-weight:700; color:#212529; }
+
+/* Best supplier */
+.nfc-ai-best-supplier {
+  font-size:12px; padding:5px 8px; background:#f0fdf4;
+  border:1px solid #bbf7d0; border-radius:5px; margin: 6px 0;
+}
+
+/* History table */
+.nfc-ai-history-title { font-size:11px; color:#6c757d; font-weight:600; margin:8px 0 4px; }
+.nfc-ai-history-table { width:100%; border-collapse:collapse; font-size:11px; }
+.nfc-ai-history-table tr { border-bottom:1px solid #f0f0f0; }
+.nfc-ai-history-table td { padding:3px 4px; }
+.nfc-ai-history-date     { color:#6c757d; width:80px; }
+.nfc-ai-history-supplier { color:#495057; }
+.nfc-ai-history-price    { text-align:right; }
 `;
 document.head.appendChild(style);
