@@ -13,4 +13,19 @@
     </field>
   </record>
 
+  <!-- Tóm tắt một cửa cho BGĐ (bảng giá nội bộ + cùng NCC) -->
+  <record id="view_purchase_order_form_executive_summary" model="ir.ui.view">
+    <field name="name">purchase.order.form.nfc.executive.summary</field>
+    <field name="model">purchase.order</field>
+    <field name="inherit_id" ref="purchase.purchase_order_form"/>
+    <field name="priority">30</field>
+    <field name="arch" type="xml">
+      <xpath expr="//notebook" position="inside">
+        <page string="Tóm tắt BGĐ" name="nfc_executive_summary" sequence="5">
+          <field name="nfc_executive_summary_html" colspan="2" nolabel="1" readonly="1"/>
+        </page>
+      </xpath>
+    </field>
+  </record>
+
 </odoo>

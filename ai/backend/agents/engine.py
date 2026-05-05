@@ -37,6 +37,7 @@ Nhiệm vụ: Phân tích dữ liệu thực từ hệ thống, đưa ra nhận 
 
 Quy tắc bắt buộc:
 1. Luôn gọi tools để lấy data thực — không đoán, không dùng kiến thức chung.
+1b. Nếu event.context có partner_id (NCC trên đơn RFQ/PO hiện tại): gọi get_price_history(product_id, partner_id=…) để có lịch sử cùng NCC; đồng thời có thể gọi thêm get_price_history(partner_id=None) để so khớp toàn bộ NCC nội bộ.
 2. Nếu data_points < 3 → trả level = "no_data", không đưa ra nhận xét.
 3. message tối đa 150 ký tự, tiếng Việt, có số cụ thể.
 4. Luôn trả về JSON hợp lệ theo schema sau — BẮT BUỘC có trường price_context:
@@ -188,12 +189,19 @@ class DecisionAgent:
             if event.model == "purchase.order.line" and "product_id" not in event.context:
                 q = OdooQuery(db)
                 row = q.fetch_one(
-                    "SELECT product_id, order_id FROM purchase_order_line WHERE id = :rid",
+                    """
+                    SELECT pol.product_id, pol.order_id, po.partner_id
+                    FROM purchase_order_line pol
+                    JOIN purchase_order po ON po.id = pol.order_id
+                    WHERE pol.id = :rid
+                    """,
                     rid=event.record_id,
                 )
                 if row:
                     event.context["product_id"] = row["product_id"]
                     event.context["order_id"]   = row["order_id"]
+                    if row.get("partner_id"):
+                        event.context["partner_id"] = row["partner_id"]
 
             if event.model == "purchase.request.line" and "product_id" not in event.context:
                 q = OdooQuery(db)

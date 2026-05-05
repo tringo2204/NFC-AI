@@ -1,18 +1,22 @@
-"""get_price_history — lịch sử giá mua theo product + supplier."""
+"""get_price_history — lịch sử giá mua theo product, tùy chọn lọc theo NCC."""
 from ..registry import tool
 from ...db.adapter import OdooQuery
 
 
 @tool
-def get_price_history(q: OdooQuery, product_id: int, months: int = 6) -> list[dict]:
+def get_price_history(
+    q: OdooQuery,
+    product_id: int,
+    months: int = 6,
+    partner_id: int | None = None,
+) -> list[dict]:
     """
     Lấy lịch sử giá mua của sản phẩm trong N tháng gần nhất.
-    Dùng khi cần so sánh giá hiện tại với lịch sử giao dịch thực tế.
-    Trả về các giao dịch PO đã xác nhận: date, price, supplier, qty, po_ref.
-    Chỉ lấy PO ở trạng thái purchase hoặc done.
+    Nếu truyền partner_id: chỉ các giao dịch với đúng nhà cung cấp đó (cùng NCC trên RFQ/PO).
+    Nếu partner_id = None: mọi NCC nội bộ NFC.
+    Trả về: date, price, supplier, qty, po_ref từ PO purchase/done.
     """
-    return q.fetch(
-        """
+    sql = """
         SELECT
             po.name                                  AS po_ref,
             po.date_order::date                      AS date,
@@ -27,10 +31,11 @@ def get_price_history(q: OdooQuery, product_id: int, months: int = 6) -> list[di
         JOIN uom_uom       uu   ON uu.id  = pol.product_uom
         WHERE pol.product_id = :product_id
           AND po.state IN ('purchase', 'done')
-          AND po.date_order >= NOW() - INTERVAL ':months months'
-        ORDER BY po.date_order DESC
-        LIMIT 30
-        """,
-        product_id=product_id,
-        months=months,
-    )
+          AND po.date_order >= NOW() - make_interval(months => :months)
+    """
+    params: dict = {"product_id": product_id, "months": months}
+    if partner_id is not None:
+        sql += " AND po.partner_id = :partner_id"
+        params["partner_id"] = partner_id
+    sql += " ORDER BY po.date_order DESC LIMIT 30"
+    return q.fetch(sql, **params)
