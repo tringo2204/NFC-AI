@@ -149,7 +149,6 @@ export class NfcMultilineChartField extends Component {
                                     t-att-cy="d.y"
                                     r="4"
                                     t-att-fill="p.color"
-                                    t-att-stroke="var(--nfc-mlc-dot-stroke, #fff)"
                                     stroke-width="1.5"
                                 />
                             </t>
@@ -457,6 +456,9 @@ style.textContent = `
   fill-opacity: 0.75;
   pointer-events: none;
 }
+.nfc-mlc-dot {
+  stroke: #fff;
+}
 .nfc-mlc-xlabel {
   font-size: 11px;
   fill: currentColor;
@@ -502,10 +504,12 @@ style.textContent = `
 @media (prefers-color-scheme: dark) {
   html:not([data-color-scheme="light"]) .nfc-mlc-card {
     --nfc-mlc-card-bg: var(--o-view-background-color, #1e1e1e);
-    --nfc-mlc-dot-stroke: #2d2d2d;
     --nfc-mlc-tip-bg: rgba(30, 30, 30, 0.96);
     --nfc-mlc-tip-fg: #f8f9fa;
     box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+  html:not([data-color-scheme="light"]) .nfc-mlc-card .nfc-mlc-dot {
+    stroke: #2d2d2d;
   }
 }
 `;
