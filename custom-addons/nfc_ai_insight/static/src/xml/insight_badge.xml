@@ -125,7 +125,9 @@
       <div t-if="props.logId" class="nfc-ai-panel-footer">
         <button class="btn btn-sm btn-outline-success"   t-on-click="() => feedback('accepted')">✓ Chấp nhận</button>
         <button class="btn btn-sm btn-outline-secondary" t-on-click="() => feedback('ignored')">Bỏ qua</button>
-        <button class="btn btn-sm btn-outline-warning"   t-on-click="() => feedback('overridden')">Ghi đè</button>
+        <button class="btn btn-sm btn-outline-warning"
+                title="Điền giá đề xuất của AI vào ô đơn giá / đơn giá ước tính"
+                t-on-click="() => feedback('overridden')">Ghi đè</button>
       </div>
     </div>
   </t>

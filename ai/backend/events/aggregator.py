@@ -30,6 +30,10 @@ AGGREGATION_RULES: list[AggregationRule] = [
     AggregationRule("purchase.order",      "state",            "state_transition",  "draft",   "sent",      "rfq_sent"),
     AggregationRule("purchase.order",      "amount_total",     "any",              None,       None,        "po_amount_changed"),
 
+    # Purchase Request (NFC) — ước tính giá trên dòng PR
+    AggregationRule("purchase.request.line", "estimated_price", "any",              None,       None,        "price_input_completed"),
+    AggregationRule("purchase.request.line", "product_id",      "any",              None,       None,        "product_selected"),
+
     # HR
     AggregationRule("hr.contract",         "wage",             "any",              None,       None,        "salary_input_completed"),
     AggregationRule("hr.contract",         "state",            "state_transition",  "draft",   "open",      "contract_activated"),

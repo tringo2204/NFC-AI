@@ -43,6 +43,18 @@ DOMAIN_ROUTES: list[DomainRoute] = [
         tools=["get_budget_compliance", "get_market_benchmark"],
         system_prompt_hint="Tổng giá trị PO thay đổi. Kiểm tra ngưỡng duyệt BGĐ và budget compliance.",
     ),
+    DomainRoute(
+        model="purchase.request.line",
+        event_type="price_input_completed",
+        tools=["get_price_history", "get_supplier_comparison", "get_price_volatility"],
+        system_prompt_hint="Đây là Đơn giá ước tính trên Yêu cầu mua (PR), chưa phải PO. So sánh với lịch sử mua thực để điền mức giá hợp lý trước khi duyệt.",
+    ),
+    DomainRoute(
+        model="purchase.request.line",
+        event_type="product_selected",
+        tools=["get_price_history", "get_supplier_comparison"],
+        system_prompt_hint="Sản phẩm vừa chọn trên dòng PR. Gợi ý mức giá ước tính dựa trên lịch sử mua.",
+    ),
 
     # ── HR ────────────────────────────────────────────────────────────────────
     DomainRoute(

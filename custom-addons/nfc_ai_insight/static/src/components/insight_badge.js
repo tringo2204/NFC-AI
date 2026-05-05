@@ -97,7 +97,9 @@ export class NfcAiInsightField extends Component {
     _fetch(props = this.props) {
         const value    = props.record?.data?.[props.name];
         const recordId = props.record?.resId;
-        if (!value || !recordId) return;
+        // Cho phép value = 0 (ước tính tạm); chỉ bỏ qua khi chưa có id dòng hoặc giá trị rỗng
+        if (recordId == null || recordId === false) return;
+        if (value === null || value === undefined || value === "") return;
         this.state.loading  = true;
         this.state.decision = null;
         this.aiService.requestInsight(
@@ -113,8 +115,14 @@ export class NfcAiInsightField extends Component {
     }
 
     onFeedback = async (action) => {
-        await this.aiService.sendFeedback(this.state.logId, action);
+        const decision = this.state.decision;
+        const suggested = decision?.price_context?.suggested_price;
+        await this.aiService.sendFeedback(this.state.logId, action, "");
+        if (action === "overridden" && suggested != null && this.props.record) {
+            this.props.record.update({ [this.props.name]: suggested });
+        }
         this.state.decision = null;
+        this.state.logId = null;
     }
 
     get isMonetary() { return !!this.props.record?.data?.currency_id; }

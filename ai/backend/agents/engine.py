@@ -195,6 +195,16 @@ class DecisionAgent:
                     event.context["product_id"] = row["product_id"]
                     event.context["order_id"]   = row["order_id"]
 
+            if event.model == "purchase.request.line" and "product_id" not in event.context:
+                q = OdooQuery(db)
+                row = q.fetch_one(
+                    "SELECT product_id, request_id FROM purchase_request_line WHERE id = :rid",
+                    rid=event.record_id,
+                )
+                if row:
+                    event.context["product_id"] = row["product_id"]
+                    event.context["request_id"] = row["request_id"]
+
             registry_tools = get_tools_for_scope(tool_names)
             lc_tools = [_make_langchain_tool(t, db) for t in registry_tools]
 
