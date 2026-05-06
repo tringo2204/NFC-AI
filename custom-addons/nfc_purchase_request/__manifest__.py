@@ -32,6 +32,7 @@ Quản lý toàn bộ luồng Yêu Cầu Mua Hàng (PR) theo quy trình NFC:
         'data/ir_sequence.xml',
         'data/mail_template.xml',
         'data/stock_data.xml',
+        'data/nfc_approver_params.xml',
         'wizard/pr_action_wizard_views.xml',
         'wizard/qa_fail_wizard_views.xml',
         'views/purchase_request_views.xml',

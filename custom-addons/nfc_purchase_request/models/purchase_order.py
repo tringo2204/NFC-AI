@@ -10,6 +10,13 @@ _ANOMALY_Z_CRITICAL = 2.5   # > 2.5σ  → cảnh báo đỏ
 _ANOMALY_Z_WARNING  = 1.5   # 1.5–2.5σ → cảnh báo vàng
 _ANOMALY_MIN_SAMPLES = 3    # cần ít nhất 3 điểm lịch sử
 
+# ir.config_parameter keys for RFQ approver routing
+_RFQ_APPROVER_PARAMS = {
+    'sku':        'nfc.rfq_approver.sku',        # Chị Hương — Nguyên liệu / SKU
+    'investment': 'nfc.rfq_approver.investment',  # Anh Khâm  — Máy móc / Đầu tư
+    'operation':  'nfc.rfq_approver.operation',   # Anh Ân    — Dịch vụ / Phụ tùng
+}
+
 
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
@@ -22,6 +29,14 @@ class PurchaseOrder(models.Model):
     pr_type = fields.Selection(
         related='purchase_request_id.pr_type',
         string='Loại PR', store=True,
+    )
+
+    # RFQ approver auto-assigned from PR type routing
+    rfq_approver_id = fields.Many2one(
+        'res.users', string='Người Phụ Trách Duyệt RFQ',
+        copy=False, tracking=True,
+        help='Tự động gán theo loại PR: SKU→Hương, Investment→Khâm, Operation→Ân. '
+             'Cấu hình tại Settings → Tham số kỹ thuật → nfc.rfq_approver.*',
     )
 
     # Validation gate: số lượng vendor báo giá & đính kèm bằng chứng
@@ -79,6 +94,20 @@ class PurchaseOrder(models.Model):
             pr_type = order.pr_type or (
                 order.purchase_request_id.pr_type if order.purchase_request_id else 'operation'
             )
+            source_type = (
+                order.purchase_request_id.source_type
+                if order.purchase_request_id else None
+            )
+
+            # Auto-bypass: hợp đồng dài hạn miễn yêu cầu ≥3 báo giá
+            if source_type in ('long_term_material', 'long_term_service') \
+                    and not order.bypass_quote_requirement:
+                order.sudo().write({
+                    'bypass_quote_requirement': True,
+                    'bypass_reason': 'Hợp đồng dài hạn — miễn yêu cầu ≥ 3 báo giá',
+                })
+                continue
+
             if pr_type == 'sku' and not order.bypass_quote_requirement:
                 if order.vendor_quote_count < 3:
                     raise UserError(_(
@@ -94,6 +123,14 @@ class PurchaseOrder(models.Model):
 
     def button_confirm(self):
         self._check_rfq_validation_gate()
+        # CEO approval hard gate: chặn xác nhận nếu chưa được BGĐ duyệt
+        for order in self:
+            if order.requires_ceo_approval and not order.ceo_approved:
+                raise UserError(_(
+                    'PO "%s" có tổng giá trị vượt 50 triệu VND.\n'
+                    'Cần BGĐ phê duyệt trước khi xác nhận đơn hàng.\n'
+                    'Vui lòng nhấn nút "Cần BGĐ Duyệt" ở đầu trang để gửi yêu cầu lên BGĐ.'
+                ) % order.name)
         result = super().button_confirm()
         self._run_anomaly_detection()
         return result
@@ -166,6 +203,31 @@ class PurchaseOrder(models.Model):
         )
         order.message_post(body=msg, message_type='comment',
                            subtype_xmlid='mail.mt_note')
+
+    # ─────────────────────────────────────────────────────────────────────
+    # RFQ Approver Routing
+    # ─────────────────────────────────────────────────────────────────────
+
+    @api.model
+    def _get_rfq_approver_for_type(self, pr_type):
+        """Trả về res.users tương ứng với loại PR, đọc từ ir.config_parameter.
+        Admin cấu hình bằng cách vào Settings → Tham số kỹ thuật:
+          nfc.rfq_approver.sku        → user_id (Chị Hương)
+          nfc.rfq_approver.investment → user_id (Anh Khâm)
+          nfc.rfq_approver.operation  → user_id (Anh Ân)
+        """
+        param_key = _RFQ_APPROVER_PARAMS.get(pr_type or 'operation')
+        if not param_key:
+            return self.env['res.users']
+        uid_str = self.env['ir.config_parameter'].sudo().get_param(param_key, '')
+        if uid_str:
+            try:
+                user = self.env['res.users'].sudo().browse(int(uid_str))
+                if user.exists():
+                    return user
+            except (ValueError, TypeError):
+                pass
+        return self.env['res.users']
 
     # ─────────────────────────────────────────────────────────────────────
     # CEO Approval

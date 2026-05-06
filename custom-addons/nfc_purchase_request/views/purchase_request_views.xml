@@ -134,7 +134,7 @@
                     <button name="action_cancel" string="Hủy PR" type="object"
                             invisible="state in ('rejected','cancelled','accepted')"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,submitted,approved,accepted"/>
+                           statusbar_visible="draft,submitted,approved,accepted,rejected,cancelled"/>
                 </header>
 
                 <sheet>

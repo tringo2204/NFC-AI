@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Cấu hình người duyệt RFQ theo loại PR.
+        Giá trị = user_id (integer).
+        Admin cập nhật tại: Settings → Tham số kỹ thuật → tìm "nfc.rfq_approver"
+        Hoặc chạy script: custom-addons/nfc_purchase_request/data/seed_rfq_approvers.py
+    -->
+    <record id="param_rfq_approver_sku" model="ir.config_parameter">
+        <field name="key">nfc.rfq_approver.sku</field>
+        <field name="value"></field>
+    </record>
+    <record id="param_rfq_approver_investment" model="ir.config_parameter">
+        <field name="key">nfc.rfq_approver.investment</field>
+        <field name="value"></field>
+    </record>
+    <record id="param_rfq_approver_operation" model="ir.config_parameter">
+        <field name="key">nfc.rfq_approver.operation</field>
+        <field name="value"></field>
+    </record>
+</odoo>

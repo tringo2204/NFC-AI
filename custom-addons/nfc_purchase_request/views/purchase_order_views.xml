@@ -8,7 +8,7 @@
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Thêm smart button CEO approval trước button_box -->
+            <!-- Smart buttons: CEO approval + reject -->
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_ceo_approve" type="object"
                         class="oe_stat_button" icon="fa-check-circle"
@@ -16,6 +16,14 @@
                     <div class="o_field_widget o_stat_info">
                         <span class="o_stat_value text-danger">Cần BGĐ Duyệt</span>
                         <span class="o_stat_text">&gt;50 triệu</span>
+                    </div>
+                </button>
+                <button name="action_ceo_reject" type="object"
+                        class="oe_stat_button" icon="fa-times-circle"
+                        invisible="not requires_ceo_approval or ceo_approved">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value text-danger">BGĐ Từ Chối</span>
+                        <span class="o_stat_text">Hủy PO</span>
                     </div>
                 </button>
                 <button type="object" name="action_ceo_approve"
@@ -28,15 +36,30 @@
                 </button>
             </xpath>
 
-            <!-- Thêm PR link dưới field origin -->
+            <!-- Thêm PR link + RFQ approver dưới field origin -->
             <xpath expr="//field[@name='partner_ref']" position="after">
                 <field name="purchase_request_id" readonly="1"
                        invisible="not purchase_request_id"/>
+                <field name="rfq_approver_id" readonly="1"
+                       widget="many2one_avatar_user"
+                       invisible="not rfq_approver_id"
+                       string="Người phụ trách duyệt RFQ"/>
             </xpath>
 
             <!-- Tab Validation Gate -->
             <xpath expr="//notebook" position="inside">
                 <page string="Validation Gate (NFC)" name="nfc_validation">
+                    <group string="Phân Công &amp; Định Tuyến">
+                        <group>
+                            <field name="purchase_request_id" readonly="1"
+                                   invisible="not purchase_request_id"/>
+                            <field name="pr_type" readonly="1"
+                                   invisible="not pr_type"/>
+                            <field name="rfq_approver_id"
+                                   widget="many2one_avatar_user"
+                                   string="Người phụ trách duyệt RFQ"/>
+                        </group>
+                    </group>
                     <group string="Kiểm Tra Trước Khi Xác Nhận PO">
                         <group>
                             <field name="vendor_quote_count"

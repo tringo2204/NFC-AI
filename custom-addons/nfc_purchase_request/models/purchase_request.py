@@ -241,6 +241,28 @@ class PurchaseRequest(models.Model):
             'notes': f'Tạo từ {self.name} - {self.purpose}',
         })
 
+        # Auto-assign RFQ approver theo loại PR
+        approver = rfq._get_rfq_approver_for_type(self.pr_type)
+        pr_type_label = dict(self._fields['pr_type'].selection).get(self.pr_type, self.pr_type)
+        if approver:
+            rfq.write({'rfq_approver_id': approver.id, 'user_id': approver.id})
+            rfq.message_post(
+                body=_(
+                    '<b>📋 RFQ tạo từ %(pr)s</b> — Loại: %(type)s<br/>'
+                    'Người phụ trách duyệt: <b>%(name)s</b><br/>'
+                    'Vui lòng lấy báo giá từ NCC và xác nhận đơn hàng khi đủ điều kiện.'
+                ) % {'pr': self.name, 'type': pr_type_label, 'name': approver.name},
+                partner_ids=[approver.partner_id.id] if approver.partner_id else [],
+            )
+        else:
+            rfq.message_post(
+                body=_(
+                    'RFQ tạo từ %s (Loại: %s).<br/>'
+                    '<i>Chưa cấu hình người duyệt RFQ. '
+                    'Admin vào Settings → Tham số kỹ thuật → nfc.rfq_approver.* để thiết lập.</i>'
+                ) % (self.name, pr_type_label),
+            )
+
         return {
             'type': 'ir.actions.act_window',
             'name': _('RFQ'),
