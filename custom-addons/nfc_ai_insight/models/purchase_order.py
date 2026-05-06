@@ -369,12 +369,19 @@ class PurchaseOrder(models.Model):
                 + "".join(rows_html)
                 + "</tbody></table></div>"
             )
-            # Scorecard đặt TRƯỚC pricing table để luôn hiển thị
+            # Scorecard + Forecast đặt TRƯỚC pricing table
             first_line = order._nfc_primary_po_line()
             scorecard = ""
+            forecast = ""
             if first_line and first_line.product_id:
                 scorecard = order._nfc_build_supplier_scorecard(first_line.product_id.id)
-            order.nfc_executive_summary_html = scorecard + table
+            # Forecast cho tất cả sản phẩm trong PO
+            product_ids = list({
+                l.product_id.id for l in order.order_line if l.product_id
+            })
+            if product_ids:
+                forecast = order._nfc_build_price_forecast(product_ids)
+            order.nfc_executive_summary_html = scorecard + forecast + table
 
     def _nfc_build_supplier_scorecard(self, product_id):
         """SQL rank NCC: giá trung bình + QA pass rate + lead time."""
@@ -503,4 +510,158 @@ class PurchaseOrder(models.Model):
             "</tr></thead><tbody>"
             + "".join(tr_list)
             + "</tbody></table></div>"
+        )
+
+    # ─── Price Forecasting ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _linreg(xs, ys):
+        """Hồi quy tuyến tính đơn giản. Trả (slope, intercept, r2)."""
+        n = len(xs)
+        if n < 2:
+            return 0.0, ys[0] if ys else 0.0, 0.0
+        sx = sum(xs); sy = sum(ys)
+        sxy = sum(x * y for x, y in zip(xs, ys))
+        sx2 = sum(x * x for x in xs)
+        denom = n * sx2 - sx * sx
+        if denom == 0:
+            return 0.0, sy / n, 0.0
+        slope = (n * sxy - sx * sy) / denom
+        intercept = (sy - slope * sx) / n
+        y_mean = sy / n
+        ss_tot = sum((y - y_mean) ** 2 for y in ys)
+        ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(xs, ys))
+        r2 = max(0.0, 1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+        return slope, intercept, r2
+
+    def _nfc_build_price_forecast(self, product_ids, horizon=3):
+        """Dự báo giá tuyến tính cho danh sách product_ids, N tháng tới."""
+        if not product_ids:
+            return ""
+
+        self.env.cr.execute("""
+            SELECT
+                pol.product_id,
+                COALESCE(pt.name->>'vi_VN', pt.name->>'en_US',
+                         pt.name::text)                    AS product_name,
+                pt.default_code                            AS code,
+                date_trunc('month', po.date_order)::date   AS month,
+                ROUND(AVG(pol.price_unit)::numeric, 0)     AS avg_price,
+                COUNT(*)                                   AS tx_count
+            FROM purchase_order_line pol
+            JOIN purchase_order    po ON po.id  = pol.order_id
+            JOIN product_product   pp ON pp.id  = pol.product_id
+            JOIN product_template  pt ON pt.id  = pp.product_tmpl_id
+            WHERE pol.product_id = ANY(%s)
+              AND po.state IN ('purchase', 'done')
+              AND po.date_order >= NOW() - INTERVAL '14 months'
+            GROUP BY pol.product_id, pt.name, pt.default_code,
+                     date_trunc('month', po.date_order)
+            ORDER BY pol.product_id, month
+        """, (product_ids,))
+        rows = self.env.cr.dictfetchall()
+        if not rows:
+            return ""
+
+        # Group theo product
+        from collections import defaultdict
+        import datetime
+        by_product = defaultdict(list)
+        meta = {}
+        for r in rows:
+            pid = r['product_id']
+            by_product[pid].append(r)
+            meta[pid] = (r['product_name'] or r['code'] or f"SP#{pid}", r['code'] or "")
+
+        def fmt(n):
+            return f"{int(float(n)):,}".replace(',', '.')
+
+        def trend_badge(slope, last_price):
+            if last_price <= 0:
+                return ""
+            pct = slope / last_price * 100
+            if abs(pct) < 0.5:
+                return "<span class='badge bg-secondary'>→ Ổn định</span>"
+            elif pct > 0:
+                color = "danger" if pct > 3 else "warning"
+                return f"<span class='badge bg-{color}'>↑ +{pct:.1f}%/T</span>"
+            else:
+                return f"<span class='badge bg-success'>↓ {pct:.1f}%/T</span>"
+
+        def r2_badge(r2):
+            if r2 >= 0.75:
+                return f"<span class='text-success fw-bold'>{r2:.0%}</span>"
+            elif r2 >= 0.4:
+                return f"<span class='text-warning fw-bold'>{r2:.0%}</span>"
+            else:
+                return f"<span class='text-muted'>{r2:.0%}</span>"
+
+        # Tính forecast cho mỗi sản phẩm
+        now = datetime.date.today().replace(day=1)
+        forecast_months = [
+            (now.replace(month=(now.month + i - 1) % 12 + 1,
+                         year=now.year + (now.month + i - 1) // 12),
+             f"T{(now.month + i - 1) % 12 + 1}/{now.year + (now.month + i - 1) // 12}")
+            for i in range(1, horizon + 1)
+        ]
+
+        tr_rows = []
+        for pid in product_ids:
+            data = by_product.get(pid, [])
+            if len(data) < 2:
+                continue
+            pname, code = meta[pid]
+            display = f"[{code}] {pname}" if code else pname
+            if len(display) > 35:
+                display = display[:33] + "…"
+
+            xs = list(range(len(data)))
+            ys = [float(d['avg_price']) for d in data]
+            slope, intercept, r2 = self._linreg(xs, ys)
+            last_price = ys[-1]
+            n = len(xs)
+
+            forecast_vals = [slope * (n + i) + intercept for i in range(horizon)]
+            pred_cells = "".join(
+                f"<td class='text-end'><strong>{fmt(max(0, v))}đ</strong>"
+                f"<br><small class='text-muted'>"
+                f"{'▲' if v > last_price else '▼'} "
+                f"{abs((v - last_price) / last_price * 100):.1f}%</small></td>"
+                for v in forecast_vals
+            )
+
+            tr_rows.append(
+                f"<tr>"
+                f"<td class='text-nowrap'><small>{display}</small></td>"
+                f"<td class='text-center'>{len(data)}T</td>"
+                f"{pred_cells}"
+                f"<td class='text-center'>{trend_badge(slope, last_price)}</td>"
+                f"<td class='text-center'>{r2_badge(r2)}</td>"
+                f"</tr>"
+            )
+
+        if not tr_rows:
+            return ""
+
+        month_headers = "".join(
+            f"<th class='text-end'>{label}</th>" for _, label in forecast_months
+        )
+        return (
+            "<div class='nfc-forecast mt-2'>"
+            "<p class='mb-1'><strong>📈 Dự báo giá</strong> "
+            "<small class='text-muted'>— hồi quy tuyến tính, dữ liệu nội bộ "
+            f"{horizon} tháng tới</small></p>"
+            "<table class='table table-sm table-hover o_list_table'>"
+            "<thead class='table-light'><tr>"
+            "<th>Sản phẩm</th>"
+            "<th class='text-center'>Data</th>"
+            + month_headers +
+            "<th class='text-center'>Trend</th>"
+            "<th class='text-center'>R²</th>"
+            "</tr></thead><tbody>"
+            + "".join(tr_rows)
+            + "</tbody></table>"
+            "<p class='text-muted' style='font-size:11px;margin-top:4px'>"
+            "R² ≥ 75% = tin cậy cao · 40-75% = trung bình · &lt;40% = ít data / biến động lớn"
+            "</p></div>"
         )

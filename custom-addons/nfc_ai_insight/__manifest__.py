@@ -1,6 +1,6 @@
 {
     'name': 'NFC AI Insight',
-    'version': '18.0.1.3.0',
+    'version': '18.0.1.4.0',
     'summary': 'AI Decision Insight cho Purchase Order — NFC',
     'category': 'Purchase',
     'author': 'NFC',
