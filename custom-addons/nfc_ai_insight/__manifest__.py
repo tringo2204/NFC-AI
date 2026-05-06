@@ -1,6 +1,6 @@
 {
     'name': 'NFC AI Insight',
-    'version': '18.0.1.0.0',
+    'version': '18.0.1.3.0',
     'summary': 'AI Decision Insight cho Purchase Order — NFC',
     'category': 'Purchase',
     'author': 'NFC',
@@ -16,6 +16,7 @@
             'nfc_ai_insight/static/src/components/sparkline.js',
             'nfc_ai_insight/static/src/xml/sparkline.xml',
             'nfc_ai_insight/static/src/components/multi_line_chart_field.js',
+            'nfc_ai_insight/static/src/components/nfc_version.js',
             'nfc_ai_insight/static/src/components/insight_badge.js',
             'nfc_ai_insight/static/src/xml/insight_badge.xml',
         ],

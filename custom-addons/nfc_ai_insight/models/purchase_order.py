@@ -39,7 +39,6 @@ class PurchaseOrder(models.Model):
         compute="_compute_nfc_price_multiline_json",
         store=False,
     )
-
     def _compute_nfc_ai_price_risk_legacy(self):
         for order in self:
             order.nfc_ai_price_risk = False
@@ -288,6 +287,7 @@ class PurchaseOrder(models.Model):
         "order_line.price_unit",
         "partner_id",
         "state",
+        "order_line.product_qty",
     )
     def _compute_nfc_executive_summary_html(self):
         months = 12
@@ -369,4 +369,138 @@ class PurchaseOrder(models.Model):
                 + "".join(rows_html)
                 + "</tbody></table></div>"
             )
-            order.nfc_executive_summary_html = table
+            # Scorecard đặt TRƯỚC pricing table để luôn hiển thị
+            first_line = order._nfc_primary_po_line()
+            scorecard = ""
+            if first_line and first_line.product_id:
+                scorecard = order._nfc_build_supplier_scorecard(first_line.product_id.id)
+            order.nfc_executive_summary_html = scorecard + table
+
+    def _nfc_build_supplier_scorecard(self, product_id):
+        """SQL rank NCC: giá trung bình + QA pass rate + lead time."""
+        self.env.cr.execute("""
+            WITH po_data AS (
+                SELECT
+                    rp.id                                           AS partner_id,
+                    rp.name                                         AS supplier,
+                    COUNT(DISTINCT pol.id)                          AS tx_count,
+                    ROUND(AVG(pol.price_unit)::numeric, 0)          AS avg_price,
+                    MIN(pol.price_unit)                             AS min_price,
+                    MAX(pol.price_unit)                             AS max_price,
+                    MAX(po.date_order)::date                        AS last_date,
+                    AVG(
+                        GREATEST(0,
+                          EXTRACT(DAY FROM
+                            COALESCE(done_sp.date_done, po.date_order + interval '7 days')
+                            - (pol.date_planned AT TIME ZONE 'UTC')
+                          )
+                        )
+                    )                                               AS avg_delay_days
+                FROM purchase_order_line pol
+                JOIN purchase_order po  ON po.id  = pol.order_id
+                JOIN res_partner   rp  ON rp.id  = po.partner_id
+                LEFT JOIN (
+                    SELECT sm.purchase_line_id, sp.date_done
+                    FROM stock_move sm
+                    JOIN stock_picking sp ON sp.id = sm.picking_id
+                    WHERE sp.state = 'done'
+                ) done_sp ON done_sp.purchase_line_id = pol.id
+                WHERE pol.product_id = %s
+                  AND po.state IN ('purchase', 'done')
+                  AND po.date_order >= NOW() - INTERVAL '12 months'
+                GROUP BY rp.id, rp.name
+            ),
+            qa_data AS (
+                SELECT
+                    po.partner_id,
+                    COUNT(sp.id) FILTER (WHERE sp.nfc_qa_passed = true)  AS qa_pass,
+                    COUNT(sp.id)                                          AS qa_total
+                FROM stock_picking sp
+                JOIN stock_move sm ON sm.picking_id = sp.id
+                JOIN purchase_order_line pol ON pol.id = sm.purchase_line_id
+                JOIN purchase_order po ON po.id = pol.order_id
+                WHERE pol.product_id = %s
+                  AND sp.state = 'done'
+                  AND po.date_order >= NOW() - INTERVAL '12 months'
+                GROUP BY po.partner_id
+            )
+            SELECT
+                p.supplier,
+                p.tx_count,
+                p.avg_price,
+                p.min_price,
+                p.max_price,
+                p.last_date,
+                ROUND(COALESCE(p.avg_delay_days, 0)::numeric, 1)  AS avg_delay,
+                COALESCE(q.qa_pass, 0)                            AS qa_pass,
+                COALESCE(q.qa_total, 0)                           AS qa_total
+            FROM po_data p
+            LEFT JOIN qa_data q ON q.partner_id = p.partner_id
+            ORDER BY p.avg_price ASC
+        """, (product_id, product_id))
+
+        rows = self.env.cr.dictfetchall()
+        if not rows:
+            return ""
+
+        # Tìm giá thấp nhất để highlight
+        min_avg = min(float(r['avg_price']) for r in rows)
+
+        def fmt(n):
+            if n is None:
+                return "—"
+            return f"{int(float(n)):,}".replace(',', '.')
+
+        def qa_rate(r):
+            total = int(r['qa_total'])
+            passed = int(r['qa_pass'])
+            if total == 0:
+                return '<span class="text-muted">—</span>'
+            rate = passed / total * 100
+            color = 'text-success' if rate >= 90 else 'text-warning' if rate >= 70 else 'text-danger'
+            return f'<span class="{color}">{rate:.0f}% ({passed}/{total})</span>'
+
+        def delay_badge(d):
+            days = float(d or 0)
+            if days <= 1:
+                return f'<span class="badge bg-success">{days}d</span>'
+            if days <= 3:
+                return f'<span class="badge bg-warning text-dark">{days}d</span>'
+            return f'<span class="badge bg-danger">{days}d</span>'
+
+        tr_list = []
+        for i, r in enumerate(rows):
+            is_best = float(r['avg_price']) == min_avg
+            row_class = 'table-success fw-bold' if is_best else ''
+            crown = ' 👑' if is_best else ''
+            tr_list.append(
+                f"<tr class='{row_class}'>"
+                f"<td>{i+1}. {html_escape(r['supplier'])}{crown}</td>"
+                f"<td class='text-end'><strong>{fmt(r['avg_price'])}đ</strong></td>"
+                f"<td class='text-end text-muted'>{fmt(r['min_price'])}đ</td>"
+                f"<td class='text-end text-muted'>{fmt(r['max_price'])}đ</td>"
+                f"<td class='text-center'>{r['tx_count']} lần</td>"
+                f"<td class='text-center'>{qa_rate(r)}</td>"
+                f"<td class='text-center'>{delay_badge(r['avg_delay'])}</td>"
+                f"<td class='text-muted'>{r['last_date'] or '—'}</td>"
+                "</tr>"
+            )
+
+        return (
+            "<div class='nfc-supplier-score mt-2'>"
+            "<p class='mb-1'><strong>Bảng điểm NCC</strong> "
+            "<small class='text-muted'>— 12 tháng gần nhất, cùng sản phẩm</small></p>"
+            "<table class='table table-sm table-hover o_list_table'>"
+            "<thead class='table-light'><tr>"
+            "<th>Nhà Cung Cấp</th>"
+            "<th class='text-end'>Giá TB</th>"
+            "<th class='text-end'>Thấp nhất</th>"
+            "<th class='text-end'>Cao nhất</th>"
+            "<th class='text-center'>Số lần mua</th>"
+            "<th class='text-center'>QA Pass</th>"
+            "<th class='text-center'>Trễ TB</th>"
+            "<th>Lần cuối</th>"
+            "</tr></thead><tbody>"
+            + "".join(tr_list)
+            + "</tbody></table></div>"
+        )

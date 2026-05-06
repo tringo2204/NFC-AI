@@ -1,5 +1,6 @@
 /** @odoo-module **/
 import { Component, useState, onWillUpdateProps, onMounted, useRef, xml } from "@odoo/owl";
+const _NFC_BUILD = "20260506";
 import { useService } from "@web/core/utils/hooks";
 import { usePopover } from "@web/core/popover/popover_hook";
 import { registry } from "@web/core/registry";
@@ -84,8 +85,8 @@ export class NfcAiInsightField extends Component {
 
     setup() {
         this.aiService  = useService("nfc_ai_insight");
-        this.state      = useState({ loading: false, decision: null, logId: null });
-        this._lastValue = null;
+        this.state      = useState({ loading: false, decision: undefined, logId: undefined });
+        this._lastValue = undefined;
 
         onMounted(() => this._fetch());
         onWillUpdateProps((next) => {
@@ -101,15 +102,15 @@ export class NfcAiInsightField extends Component {
         if (recordId == null || recordId === false) return;
         if (value === null || value === undefined || value === "") return;
         this.state.loading  = true;
-        this.state.decision = null;
+        this.state.decision = undefined;
         this.aiService.requestInsight(
             { model: props.record.resModel, record_id: recordId, field: props.name, value,
               context: { company_id: props.record.context?.allowed_company_ids?.[0] || 1,
                          user_id:    props.record.context?.uid || 0 } },
             (decision, log_id) => {
                 this.state.loading  = false;
-                this.state.decision = decision;
-                this.state.logId    = log_id;
+                this.state.decision = decision ?? undefined;
+                this.state.logId    = log_id ?? undefined;
             }
         );
     }
@@ -121,8 +122,8 @@ export class NfcAiInsightField extends Component {
         if (action === "overridden" && suggested != null && this.props.record) {
             this.props.record.update({ [this.props.name]: suggested });
         }
-        this.state.decision = null;
-        this.state.logId = null;
+        this.state.decision = undefined;
+        this.state.logId = undefined;
     }
 
     get isMonetary() { return !!this.props.record?.data?.currency_id; }

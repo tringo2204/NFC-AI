@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
+import statistics
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 NFC_PO_APPROVAL_LIMIT = 50_000_000  # 50 triệu VND
+
+# Anomaly thresholds (Z-score)
+_ANOMALY_Z_CRITICAL = 2.5   # > 2.5σ  → cảnh báo đỏ
+_ANOMALY_Z_WARNING  = 1.5   # 1.5–2.5σ → cảnh báo vàng
+_ANOMALY_MIN_SAMPLES = 3    # cần ít nhất 3 điểm lịch sử
 
 
 class PurchaseOrder(models.Model):
@@ -88,7 +94,78 @@ class PurchaseOrder(models.Model):
 
     def button_confirm(self):
         self._check_rfq_validation_gate()
-        return super().button_confirm()
+        result = super().button_confirm()
+        self._run_anomaly_detection()
+        return result
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Anomaly Detection
+    # ─────────────────────────────────────────────────────────────────────
+
+    def _run_anomaly_detection(self):
+        """Chạy sau khi PO được xác nhận — phát hiện giá bất thường so với lịch sử."""
+        for order in self:
+            for line in order.order_line:
+                self._check_line_anomaly(order, line)
+
+    def _check_line_anomaly(self, order, line):
+        if not line.product_id or not line.price_unit:
+            return
+
+        # Lấy lịch sử giá 12 tháng từ DB (bỏ qua PO hiện tại)
+        self.env.cr.execute("""
+            SELECT pol.price_unit
+            FROM purchase_order_line pol
+            JOIN purchase_order po ON po.id = pol.order_id
+            WHERE pol.product_id = %s
+              AND po.state IN ('purchase', 'done')
+              AND po.id != %s
+              AND po.date_order >= NOW() - INTERVAL '12 months'
+            ORDER BY po.date_order DESC
+            LIMIT 30
+        """, (line.product_id.id, order.id))
+        rows = self.env.cr.fetchall()
+        prices = [float(r[0]) for r in rows if r[0]]
+
+        if len(prices) < _ANOMALY_MIN_SAMPLES:
+            return  # Không đủ data
+
+        avg   = statistics.mean(prices)
+        stdev = statistics.stdev(prices)
+        if stdev == 0:
+            return
+
+        current = float(line.price_unit)
+        z_score = (current - avg) / stdev
+        abs_z   = abs(z_score)
+
+        if abs_z < _ANOMALY_Z_WARNING:
+            return  # Bình thường
+
+        direction = 'CAO' if z_score > 0 else 'THẤP'
+        pct_diff  = ((current - avg) / avg) * 100
+
+        if abs_z >= _ANOMALY_Z_CRITICAL:
+            icon  = '🔴'
+            level = 'BẤT THƯỜNG NGHIÊM TRỌNG'
+        else:
+            icon  = '🟡'
+            level = 'CẢNH BÁO GIÁ'
+
+        def fmt(n):
+            return f"{int(n):,}".replace(',', '.')
+
+        msg = (
+            f"<b>{icon} {level}: {line.product_id.name}</b><br/>"
+            f"Giá hiện tại: <b>{fmt(current)} đ</b> — "
+            f"{direction} hơn {abs(pct_diff):.1f}% so với trung bình 12 tháng "
+            f"({fmt(avg)} đ, {len(prices)} giao dịch)<br/>"
+            f"Z-score: {z_score:.2f}σ | "
+            f"Min: {fmt(min(prices))} đ | Max: {fmt(max(prices))} đ<br/>"
+            f"<i>Vui lòng xác minh giá với NCC trước khi tiếp tục.</i>"
+        )
+        order.message_post(body=msg, message_type='comment',
+                           subtype_xmlid='mail.mt_note')
 
     # ─────────────────────────────────────────────────────────────────────
     # CEO Approval
