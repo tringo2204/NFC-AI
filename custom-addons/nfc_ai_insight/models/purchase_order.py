@@ -515,22 +515,44 @@ class PurchaseOrder(models.Model):
     # ─── Price Forecasting ────────────────────────────────────────────────────
 
     @staticmethod
-    def _linreg(xs, ys):
-        """Hồi quy tuyến tính đơn giản. Trả (slope, intercept, r2)."""
+    def _iqr_filter(xs, ys):
+        """Loại bỏ outlier bằng IQR (1.5×). Trả (xs_clean, ys_clean)."""
+        if len(ys) < 4:
+            return xs, ys
+        sorted_y = sorted(ys)
+        n = len(sorted_y)
+        q1 = sorted_y[n // 4]
+        q3 = sorted_y[(3 * n) // 4]
+        iqr = q3 - q1
+        lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+        pairs = [(x, y) for x, y in zip(xs, ys) if lo <= y <= hi]
+        if len(pairs) < 2:
+            return xs, ys           # giữ nguyên nếu lọc quá ít
+        return [p[0] for p in pairs], [p[1] for p in pairs]
+
+    @staticmethod
+    def _linreg(xs, ys, weights=None):
+        """Weighted linear regression. Trả (slope, intercept, r2).
+        weights=None → trọng số bằng nhau; list tăng dần → ưu tiên data mới.
+        """
         n = len(xs)
         if n < 2:
             return 0.0, ys[0] if ys else 0.0, 0.0
-        sx = sum(xs); sy = sum(ys)
-        sxy = sum(x * y for x, y in zip(xs, ys))
-        sx2 = sum(x * x for x in xs)
-        denom = n * sx2 - sx * sx
+        ws = weights if weights else [1.0] * n
+        sw   = sum(ws)
+        swx  = sum(w * x for w, x in zip(ws, xs))
+        swy  = sum(w * y for w, y in zip(ws, ys))
+        swxy = sum(w * x * y for w, x, y in zip(ws, xs, ys))
+        swx2 = sum(w * x * x for w, x in zip(ws, xs))
+        denom = sw * swx2 - swx * swx
         if denom == 0:
-            return 0.0, sy / n, 0.0
-        slope = (n * sxy - sx * sy) / denom
-        intercept = (sy - slope * sx) / n
-        y_mean = sy / n
-        ss_tot = sum((y - y_mean) ** 2 for y in ys)
-        ss_res = sum((y - (slope * x + intercept)) ** 2 for x, y in zip(xs, ys))
+            return 0.0, swy / sw, 0.0
+        slope     = (sw * swxy - swx * swy) / denom
+        intercept = (swy - slope * swx) / sw
+        y_mean = swy / sw
+        ss_tot = sum(w * (y - y_mean) ** 2 for w, y in zip(ws, ys))
+        ss_res = sum(w * (y - (slope * x + intercept)) ** 2
+                     for w, x, y in zip(ws, xs, ys))
         r2 = max(0.0, 1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0
         return slope, intercept, r2
 
@@ -615,11 +637,19 @@ class PurchaseOrder(models.Model):
             if len(display) > 35:
                 display = display[:33] + "…"
 
-            xs = list(range(len(data)))
-            ys = [float(d['avg_price']) for d in data]
-            slope, intercept, r2 = self._linreg(xs, ys)
-            last_price = ys[-1]
-            n = len(xs)
+            xs_raw = list(range(len(data)))
+            ys_raw = [float(d['avg_price']) for d in data]
+
+            # 1. Lọc outlier bằng IQR trước khi fit
+            xs_f, ys_f = self._iqr_filter(xs_raw, ys_raw)
+
+            # 2. Weighted regression: tháng gần hơn có trọng số cao hơn
+            #    w_i = 1.3^i  → tháng mới nhất ≈ 3.4× tháng cũ nhất (12T)
+            ws = [1.3 ** i for i in range(len(xs_f))]
+            slope, intercept, r2 = self._linreg(xs_f, ys_f, weights=ws)
+
+            last_price = ys_raw[-1]   # giá thực tế gần nhất (chưa lọc)
+            n = len(xs_raw)           # dự báo dựa trên vị trí tháng gốc
 
             forecast_vals = [slope * (n + i) + intercept for i in range(horizon)]
             pred_cells = "".join(
@@ -662,6 +692,7 @@ class PurchaseOrder(models.Model):
             + "".join(tr_rows)
             + "</tbody></table>"
             "<p class='text-muted' style='font-size:11px;margin-top:4px'>"
-            "R² ≥ 75% = tin cậy cao · 40-75% = trung bình · &lt;40% = ít data / biến động lớn"
+            "Thuật toán: hồi quy tuyến tính có trọng số (tháng gần = ưu tiên cao) + lọc outlier IQR · "
+            "R² ≥ 75% tin cậy cao · 40-75% trung bình · &lt;40% biến động lớn"
             "</p></div>"
         )
